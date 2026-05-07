@@ -1,5 +1,6 @@
 from pydantic.dataclasses import dataclass
 from abc import ABC
+from typing import Optional
 
 
 # author dataclass
@@ -24,10 +25,10 @@ class Content(ABC):
 # comment dataclass
 @dataclass
 class Comment(Content):
-    comments: list[Content]
+    comments: Optional[list[Content]] = None
 
 # post dataclass
 @dataclass
 class Post(Content):
     title: str
-    comments: list[Content]
+    comments: Optional[list[Content]] = None
