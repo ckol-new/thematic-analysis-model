@@ -50,4 +50,3 @@ def test_save_and_read_seeds():
 
     assert seeds == output
     assert seeds_shortened == output_shortened
-
