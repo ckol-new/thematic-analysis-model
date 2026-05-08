@@ -13,18 +13,35 @@ def generate_seeds(base: str, start: int, stop: int, end_seq: str) -> list[str]:
 
     return seeds
 
+# save seed output enables documentation of every seed scraped from
+# note it appends, not writes
+def save_seeds(seeds: list[str], location: str):
+    with open(location, 'a') as f:
+        for seed in seeds:
+            f.append(seed)
+# read seed method is opposite, generates list of seeds from seed file
+def read_seeds(location: str, limit: int = None) -> list[str] | None:
+    seeds = None
+    i = 0
+    with open(location, 'r') as f:
+        if not limit:
+            seeds = f.readlines()
+        else:
+            while i <= limit:
+                seeds.append(f.readline())
+                i += 1
+    
+    return seeds
+
 
 
 # abstract scraping pipeline class: because each forum has unique html structure, and scraping rules, it needs its own implementation of this class
 class ScrapingPipeline(ABC):
     # general pipeline operation goes as follows: *save seeds -> crawl -> *save crawl output -> scrape -> save scrape output
     def __init__(self, seeds: list[str]):
-        ...
 
-    # save seed output enables documentation of every seed scraped from
-    # parameterized, so it can be optionally ran
-    def save_seeds(self):
-        ...
+        if self.save_seeds_location:
+
     
     # run_crawler method acts as 'queue' of all crawl operations to be performed on each 'seed' or start node
     # generate crawl output which is the list of all pages to be scraped from
