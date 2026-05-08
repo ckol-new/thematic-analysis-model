@@ -53,6 +53,7 @@ def request_page(url: str, header: dict = None) -> str:
         if response.status_code == 200:
             ...
         else: print('REQUEST FAILED: ', response.status_code)
+
     except requests.exceptions.RequestException as e:
         raise Exception(e)
 
@@ -62,20 +63,27 @@ def request_page(url: str, header: dict = None) -> str:
 # abstract scraping pipeline class: because each forum has unique html structure, and scraping rules, it needs its own implementation of this class
 class ScrapingPipeline(ABC):
     # general pipeline operation goes as follows: *save seeds -> crawl -> *save crawl output -> scrape -> save scrape output
-    def __init__(self, seeds: list[str]):
-        ...
+    def __init__(self, seeds: list[str], crawl_save_location: str | None):
+        self.seeds = seeds
+        self.save_crawl_output = crawl_save_location
 
     
     # run_crawler method acts as 'queue' of all crawl operations to be performed on each 'seed' or start node
     # generate crawl output which is the list of all pages to be scraped from
     def run_crawler(self) -> list[str]:
-        ...
-
         # iterate through seeds, to request each page html
+        crawl_output = set()
+
+        for seed in self.seeds:
+            output = self.crawl(seed)           
+            crawl_output.update(output)
+
+        return crawl_output
+
 
     # crawl method is specific to each forum
     @abstractmethod
-    def crawl(self, seed:str) -> str:
+    def crawl(self, seed:str) -> set[str] | None:
         ...
 
     # save crawl output enables docuemntation of every website scraped
@@ -96,6 +104,29 @@ class ScrapingPipeline(ABC):
     # save scrape output 
     def save_scrape_output(self):
         ...
+
+
+
+# ALZConnected.org specific scraping pipeline
+class ALZConnectedScrapingPipeline(ScrapingPipeline):
+    def __init__(self, seeds: list[str], crawl_save_location: str | None):
+        super().__init__(seeds, crawl_save_location)
     
+    # implement crawl indivudal page method
+    def crawl(self, url: str) -> set[str] | None:
+        html = self.request_page(url)
+        if not html: return None
 
+        soup = BeautifulSoup(html, 'html.parser')
+        links = set()
 
+        for link in soup.find_all('a'):
+            href = link.get('href')
+            if '/discussion/' in href:
+                links.add(href)
+
+        return list(links)
+
+    # implement scrape individual page method
+    def scrape():
+        ...
