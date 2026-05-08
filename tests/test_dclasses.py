@@ -1,5 +1,6 @@
 from thematic_analysis_model.model.dclasses import *
 from pydantic.dataclasses import dataclass
+from dataclasses import asdict
 from pydantic import TypeAdapter
 import pytest
 import json
@@ -60,16 +61,16 @@ def test_post():
     adapter = TypeAdapter(Post)
 
     # test serialization
-    expected = {"content":"text","metadata":{"uuid":"123","url":"test.com","date":"today","origin":"forum.com"},"title":"title","comments":[{"content":"text","metadata":{"uuid":"123","url":"test.com","date":"today","origin":"forum.com"}}]}
-    data = json.loads(adapter.dump_json(p).decode())
+    expected = {'content': 'text', 'metadata': {'uuid': '123', 'url': 'test.com', 'date': 'today', 'origin': 'forum.com'}, 'title': 'title', 'comments': [{'content': 'text', 'metadata': {'uuid': '123', 'url': 'test.com', 'date': 'today', 'origin': 'forum.com'}, 'comments': None}]}
+    data = json.loads(adapter.dump_json(p))
     assert expected == data
 
     # test deserialization
-    input_str = '{"content":"text","metadata":{"uuid":"123","url":"test.com","date":"today","origin":"forum.com"},"title":"title","comments":[{"content":"text","metadata":{"uuid":"123","url":"test.com","date":"today","origin":"forum.com"}}]}'
-    p2 = adapter.validate_json(json.dumps(data))
+    input_json = adapter.dump_json(p).decode()
+    p2 = adapter.validate_json(input_json)
     assert p == p2
 
-test_post()
+
 
 
 

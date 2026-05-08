@@ -1,4 +1,5 @@
 from pydantic.dataclasses import dataclass
+from pydantic import Field
 from abc import ABC
 from typing import Optional
 
@@ -25,10 +26,10 @@ class Content(ABC):
 # comment dataclass
 @dataclass
 class Comment(Content):
-    comments: Optional[list[Content]] = None
+    comments: Optional[list['Comment']] = Field(default=list) # forward reference to Comment class, or default to empty list
 
 # post dataclass
 @dataclass
 class Post(Content):
     title: str
-    comments: Optional[list[Content]] = None
+    comments: Optional[list[Comment]] = Field(default=list)
