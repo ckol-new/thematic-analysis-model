@@ -16,21 +16,25 @@ def generate_seeds(base: str, start: int, stop: int, end_seq: str) -> list[str]:
 # save seed output enables documentation of every seed scraped from
 # note it appends, not writes
 def save_seeds(seeds: list[str], location: str):
-    with open(location, 'a') as f:
+    with open(location, 'w') as f:
         for seed in seeds:
-            f.append(seed)
+            f.write(seed + '\n')
 # read seed method is opposite, generates list of seeds from seed file
 def read_seeds(location: str, limit: int = None) -> list[str] | None:
-    seeds = None
+    seeds = []
     i = 0
+
     with open(location, 'r') as f:
         if not limit:
-            seeds = f.readlines()
+            seeds = [line.rstrip('\n') for line in f.readlines()]
         else:
-            while i <= limit:
-                seeds.append(f.readline())
+            while i < limit:
+                seeds.append(f.readline().rstrip('\n'))
                 i += 1
     
+    if len(seeds) == 0:
+        return None
+
     return seeds
 
 
@@ -39,8 +43,7 @@ def read_seeds(location: str, limit: int = None) -> list[str] | None:
 class ScrapingPipeline(ABC):
     # general pipeline operation goes as follows: *save seeds -> crawl -> *save crawl output -> scrape -> save scrape output
     def __init__(self, seeds: list[str]):
-
-        if self.save_seeds_location:
+        ...
 
     
     # run_crawler method acts as 'queue' of all crawl operations to be performed on each 'seed' or start node
