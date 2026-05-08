@@ -1,5 +1,7 @@
 # scraping pipeline containing all classes and functions around scraping.
 from abc import ABC, abstractmethod
+from bs4 import BeautifulSoup
+import requests
 
 # UTILITY functions
 
@@ -37,6 +39,24 @@ def read_seeds(location: str, limit: int = None) -> list[str] | None:
 
     return seeds
 
+# request page
+# returns html of page as string
+# optionally pass in header, otherwise it uses default
+def request_page(url: str, header: dict = None) -> str:
+    if not header:
+        header = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+
+    try:
+        response = requests.get(url, headers=header)
+        if response.status_code == 200:
+            ...
+        else: print('REQUEST FAILED: ', response.status_code)
+    except requests.exceptions.RequestException as e:
+        raise Exception(e)
+
+    return response.text
 
 
 # abstract scraping pipeline class: because each forum has unique html structure, and scraping rules, it needs its own implementation of this class
@@ -51,9 +71,11 @@ class ScrapingPipeline(ABC):
     def run_crawler(self) -> list[str]:
         ...
 
+        # iterate through seeds, to request each page html
+
     # crawl method is specific to each forum
     @abstractmethod
-    def crawl(self, seed:str):
+    def crawl(self, seed:str) -> str:
         ...
 
     # save crawl output enables docuemntation of every website scraped
