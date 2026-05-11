@@ -55,8 +55,11 @@ class ScrapingPipeline(ABC):
     # general pipeline operation goes as follows: *save seeds -> crawl -> *save crawl output -> scrape -> save scrape output
     def __init__(self, seeds: list[str], crawl_save_location: Path | None):
         self.seeds = seeds
-        self.save_crawl_output = crawl_save_location
+        self.crawl_save_location = crawl_save_location
+        self.crawl_output = self.run_crawler(self.seeds)
 
+        if crawl_save_location:
+            self.save_crawl_output()
     
     # run_crawler method acts as 'queue' of all crawl operations to be performed on each 'seed' or start node
     # generate crawl output which is the list of all pages to be scraped from
@@ -79,7 +82,8 @@ class ScrapingPipeline(ABC):
     # save crawl output enables docuemntation of every website scraped
     # parameterized, so it can be optionally ran
     def save_crawl_output(self):
-        ...
+        crawl_output_str = '\n'.join(self.crawl_output)
+        smart_save(self.crawl_save_location, data = crawl_output_str, format_type='txt')
 
     # run scraper method acts as 'queue', running many scraping operations for every link in the crawl output
     def run_scraper(self):
@@ -101,6 +105,7 @@ class ScrapingPipeline(ABC):
 class ALZConnectedScrapingPipeline(ScrapingPipeline):
     def __init__(self, seeds: list[str], crawl_save_location: str | None):
         super().__init__(seeds, crawl_save_location)
+
     
     # implement crawl indivudal page method
     def crawl(self, url: str) -> set[str] | None:
@@ -115,7 +120,7 @@ class ALZConnectedScrapingPipeline(ScrapingPipeline):
             if '/discussion/' in href:
                 links.add(href)
 
-        return list(links)
+        return links
 
     # implement scrape individual page method
     def scrape():
