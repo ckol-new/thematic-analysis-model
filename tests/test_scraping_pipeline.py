@@ -43,9 +43,44 @@ def test_save_and_read_seeds():
         'www.testWebsite/p3/testing.com'
     ]
 
-    location = pathlib.Path.cwd() / 'testing_data' / 'test_seeds.txt'
+    location = pathlib.Path.cwd() / 'tests' / 'testing_data' / 'test_seeds.txt'
 
     save_seeds(location, seeds)
     output = read_seeds(location)
 
     assert seeds == output
+
+# testing ALZConnected.org crawler, using https://alzconnected.org/categories/i-have-younger-onset-alzheimers/p10 as the seed
+# note test written Monday 11th, May 2026 11:30 AM, so links may change. Keep this in mind if tests start to fail.
+def test_ALZConnected_crawler():
+    seed = ['https://alzconnected.org/categories/i-have-younger-onset-alzheimers/p10']
+    p = pathlib.Path.cwd() / 'tests' / 'testing_data' / 'test_crawl_output.txt'
+
+    pipeline = ALZConnectedScrapingPipeline(seeds=seed, crawl_save_location=p)   
+
+    # set of posts as scraped Monday 11th, May 2026, 11:30AM
+    expected_list = [
+        'https://alzconnected.org/discussion/56167/friend-still-asking-why-me',
+        'https://alzconnected.org/discussion/55782/free-on-line-activities',
+        'https://alzconnected.org/discussion/55676/iris-9',
+        'https://alzconnected.org/discussion/64407/common-abbreviations', 
+        'https://alzconnected.org/discussion/56242/new-brain-guide',
+        'https://alzconnected.org/discussion/64696/dementia-resources/',
+        'https://alzconnected.org/discussion/55907/first-post-my-husband-may-have-dementia-and-i-am-terrified',
+        'https://alzconnected.org/discussion/55236/another-one-of-my-podcast',
+        'https://alzconnected.org/discussion/56285/australia-national-dementia-helpline',
+        'https://alzconnected.org/discussion/55868/instagram-support-page',
+        'https://alzconnected.org/discussion/56011/meghan-markle-suicidal-ideation-and-stigma',
+        'https://alzconnected.org/discussion/55872/i-got-my-first-covid-19-vaccine',
+        'https://alzconnected.org/discussion/56161/i-lost-my-covid-weight',
+        'https://alzconnected.org/discussion/55910/using-poetry-as-an-outlet',
+        'https://alzconnected.org/discussion/55630/benefit-of-therapist-or-psychologist-for-husband',
+    ]
+    expected_set = set(expected_list)
+
+    assert pipeline.crawl_output == expected_set
+
+
+
+
+

@@ -53,10 +53,10 @@ def request_page(url: str, header: dict = None) -> str:
 # abstract scraping pipeline class: because each forum has unique html structure, and scraping rules, it needs its own implementation of this class
 class ScrapingPipeline(ABC):
     # general pipeline operation goes as follows: *save seeds -> crawl -> *save crawl output -> scrape -> save scrape output
-    def __init__(self, seeds: list[str], crawl_save_location: Path | None):
+    def __init__(self, seeds: list[str], crawl_save_location: Path | str | None):
         self.seeds = seeds
         self.crawl_save_location = crawl_save_location
-        self.crawl_output = self.run_crawler(self.seeds)
+        self.crawl_output = self.run_crawler()
 
         if crawl_save_location:
             self.save_crawl_output()
@@ -103,13 +103,13 @@ class ScrapingPipeline(ABC):
 
 # ALZConnected.org specific scraping pipeline
 class ALZConnectedScrapingPipeline(ScrapingPipeline):
-    def __init__(self, seeds: list[str], crawl_save_location: str | None):
+    def __init__(self, seeds: list[str], crawl_save_location: Path | str | None):
         super().__init__(seeds, crawl_save_location)
 
     
     # implement crawl indivudal page method
     def crawl(self, url: str) -> set[str] | None:
-        html = self.request_page(url)
+        html = request_page(url)
         if not html: return None
 
         soup = BeautifulSoup(html, 'html.parser')

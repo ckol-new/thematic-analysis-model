@@ -3,7 +3,6 @@ import pathlib
 from pathlib import Path
 import json
 
-
 # save text 
 def __save_text(location: Path, data):
     location.write_text(str(data), encoding='utf-8')
@@ -16,7 +15,6 @@ def __save_json(location: Path, data):
 #TODO implement __save_jsonl function
 def __save_jsonl(location: Path, data):
     ...
-
 
 # smart saver, 'dispatches' different save functions based on type of dave
 # automatically creates directory if does not exist
@@ -43,7 +41,6 @@ def smart_save(location: str | Path, data, format_type: str = 'txt'):
     except OSError as e:
         print(f'File save error {e}')
 
-
 # load txt file
 def __load_txt(location: Path):
     return location.read_text(encoding='utf-8')
@@ -55,7 +52,6 @@ def __load_json(location: Path):
 #TODO implement load jsonl
 def __load_jsonl(location: Path):
     ...
-
 
 # smart load function automatically detects file type of data to be loaded, and loads it dispatches correct function accordingling
 def smart_load(location: Path | str):
