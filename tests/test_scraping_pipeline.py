@@ -1,5 +1,7 @@
 from thematic_analysis_model.model.scraping_pipeline import *
+from thematic_analysis_model.model.util import *
 import pytest
+import pathlib
 
 # test seed generator
 def test_generate_seeds():
@@ -41,12 +43,9 @@ def test_save_and_read_seeds():
         'www.testWebsite/p3/testing.com'
     ]
 
-    location = r'C:\Users\wslam\Everything\health_city_lab\dfta\thematic-analysis-model\tests\testing_data\test_seeds.txt'
+    location = pathlib.Path.cwd() / 'testing_data' / 'test_seeds.txt'
 
-    save_seeds(seeds, location)
-
+    save_seeds(location, seeds)
     output = read_seeds(location)
-    output_shortened = read_seeds(location, 3)
 
     assert seeds == output
-    assert seeds_shortened == output_shortened

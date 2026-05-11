@@ -1,7 +1,9 @@
 # scraping pipeline containing all classes and functions around scraping.
+from thematic_analysis_model.model.util import *
 from abc import ABC, abstractmethod
 from bs4 import BeautifulSoup
 import requests
+from pathlib import Path
 
 # UTILITY functions
 
@@ -15,29 +17,17 @@ def generate_seeds(base: str, start: int, stop: int, end_seq: str) -> list[str]:
 
     return seeds
 
-# save seed output enables documentation of every seed scraped from
-# note it appends, not writes
-def save_seeds(seeds: list[str], location: str):
-    with open(location, 'w') as f:
-        for seed in seeds:
-            f.write(seed + '\n')
+# save seeds
+def save_seeds(location: Path | str, seeds: list[str]):
+    seed_str = '\n'.join(seeds)
+    smart_save(location=location, data=seed_str, format_type='txt')
+
 # read seed method is opposite, generates list of seeds from seed file
-def read_seeds(location: str, limit: int = None) -> list[str] | None:
-    seeds = []
-    i = 0
-
-    with open(location, 'r') as f:
-        if not limit:
-            seeds = [line.rstrip('\n') for line in f.readlines()]
-        else:
-            while i < limit:
-                seeds.append(f.readline().rstrip('\n'))
-                i += 1
-    
-    if len(seeds) == 0:
-        return None
-
+def read_seeds(location: Path) -> list[str] | None:
+    seeds_str = smart_load(location=location)
+    seeds = seeds_str.splitlines()
     return seeds
+
 
 # request page
 # returns html of page as string
@@ -63,7 +53,7 @@ def request_page(url: str, header: dict = None) -> str:
 # abstract scraping pipeline class: because each forum has unique html structure, and scraping rules, it needs its own implementation of this class
 class ScrapingPipeline(ABC):
     # general pipeline operation goes as follows: *save seeds -> crawl -> *save crawl output -> scrape -> save scrape output
-    def __init__(self, seeds: list[str], crawl_save_location: str | None):
+    def __init__(self, seeds: list[str], crawl_save_location: Path | None):
         self.seeds = seeds
         self.save_crawl_output = crawl_save_location
 
