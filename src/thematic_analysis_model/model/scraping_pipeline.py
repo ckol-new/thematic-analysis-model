@@ -6,7 +6,6 @@ import requests
 from pathlib import Path
 
 # UTILITY functions
-
 # seed generator utility helps speed up process of generating seeds, which act as start nodes for the crawler to branch out from.
 def generate_seeds(base: str, start: int, stop: int, end_seq: str) -> list[str]:
     seeds: list = []
@@ -28,7 +27,6 @@ def read_seeds(location: Path) -> list[str] | None:
     seeds = seeds_str.splitlines()
     return seeds
 
-
 # request page
 # returns html of page as string
 # optionally pass in header, otherwise it uses default
@@ -49,7 +47,6 @@ def request_page(url: str, header: dict = None) -> str:
 
     return response.text
 
-
 # abstract scraping pipeline class: because each forum has unique html structure, and scraping rules, it needs its own implementation of this class
 class ScrapingPipeline(ABC):
     # general pipeline operation goes as follows: *save seeds -> crawl -> *save crawl output -> scrape -> save scrape output
@@ -57,7 +54,7 @@ class ScrapingPipeline(ABC):
         self.seeds = seeds
         self.crawl_save_location = crawl_save_location
         self.crawl_output = self.run_crawler()
-
+        
         if crawl_save_location:
             self.save_crawl_output()
     
@@ -73,7 +70,6 @@ class ScrapingPipeline(ABC):
 
         return crawl_output
 
-
     # crawl method is specific to each forum
     @abstractmethod
     def crawl(self, seed:str) -> set[str] | None:
@@ -87,13 +83,68 @@ class ScrapingPipeline(ABC):
 
     # run scraper method acts as 'queue', running many scraping operations for every link in the crawl output
     def run_scraper(self):
-        ...
+        scrape_output = set() 
+        for crawl_seed in self.crawl_output:
+            scraped_post = self.scrape(crawl_seed)
+            #TODO Validation steps:
+            #   Uniqueness? No duplicates
+            #   All data included: title, url, content, author, date, comments are optional
+            #   Minimum length?
+            scrape_output.add(scraped_post())
 
     # scrape is a single scraping operation for a single link. It corresponds to the scraping of one single forum post.
     # is unique to each forum.
-    @abstractmethod
-    def scrape(self):
+    def scrape(self, url: str):
+        # get page
+        #TODO implement customization of header
+        page_html = request_page(url)
+        
+        # get title
+
+        # get content
+
+        # get metadata
+        #   get date
+
+        #   get url (easy)
+
+        #   get author 
+
+        #       get user name
+
+        #       get user id
+
+        #   get comments: recursively call
+
+        # create objects, must package comments inside post object
+
+    
         ...
+
+    # abstract methods for getting each componenet of the post: implemented by each specific scraping pipeline
+    @abstractmethod
+    def scrape_title(self):
+        ...
+    @abstractmethod
+    def scrape_content(self):
+        ...
+    @abstractmethod
+    def scrape_date(self):
+        ...
+    @abstractmethod
+    def scrape_username(self):
+        ...
+    @abstractmethod
+    def scrape_userid(self):
+        ...
+    # scrape comments plural
+    @abstractmethod
+    def scrape_comments(self):
+        @abstractmethod
+        def scrape_comment(self):
+            ...
+        ...
+    
 
     # save scrape output 
     def save_scrape_output(self):
@@ -122,6 +173,27 @@ class ALZConnectedScrapingPipeline(ScrapingPipeline):
 
         return links
 
-    # implement scrape individual page method
-    def scrape():
+
+    @abstractmethod
+    def scrape_title(self):
         ...
+    @abstractmethod
+    def scrape_content(self):
+        ...
+    @abstractmethod
+    def scrape_date(self):
+        ...
+    @abstractmethod
+    def scrape_username(self):
+        ...
+    @abstractmethod
+    def scrape_userid(self):
+        ...
+    # scrape comments plural
+    @abstractmethod
+    def scrape_comments(self):
+        @abstractmethod
+        def scrape_comment(self):
+            ...
+        ...
+    
