@@ -256,7 +256,7 @@ class ScrapingPipeline(ABC):
 
 # ALZConnected.org specific scraping pipeline
 class ALZConnectedScrapingPipeline(ScrapingPipeline):
-    def __init__(self, seeds: list[str] = None, crawl_save_location: Path | str | None = None, scrape_save_location: Path | str | None = None, forum_origin = 'alz_connected.org'):
+    def __init__(self, seeds: list[str] = None, crawl_save_location: Path | str | None = None, scrape_save_location: Path | str | None = None, forum_origin = 'alzconnected'):
         super().__init__(seeds, crawl_save_location, scrape_save_location, forum_origin)
 
     
