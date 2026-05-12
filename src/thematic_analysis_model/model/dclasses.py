@@ -8,11 +8,13 @@ from typing import Optional
 @dataclass
 class Author:
     username: str
+    userid: str
 
 # metadata dataclass
 @dataclass
 class Metadata:
     uuid: str
+    author: Author
     url: str
     date: str
     origin: str
