@@ -117,4 +117,16 @@ def test_ALZConnected_scraper_serialization():
 
     assert posts[0] == scraper.scrape_output[0]
 
+def test_ALZConnected_scraper_serialization_full_pipeline():
+    seed = ['https://alzconnected.org/categories/i-have-younger-onset-alzheimers/p10']
+    scrape_save_location = Path.cwd() / 'tests' / 'testing_data' / 'test_scraping_pipeline_full.jsonl'
+    pipeline = ALZConnectedScrapingPipeline(seeds=seed, crawl_save_location=None, scrape_save_location=scrape_save_location)
+    pipeline.run_pipeline()
+
+    # deserialize from jsonl
+    data = pipeline.load_scraped_output(scrape_save_location)
+
+    assert data == pipeline.scrape_output
+
+
 

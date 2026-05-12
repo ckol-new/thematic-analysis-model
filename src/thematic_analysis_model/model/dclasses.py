@@ -25,8 +25,6 @@ class Content(ABC):
     content: str
     metadata: Metadata
 
-#NOTE if there are no contents it must be [None] not None
-
 # comment dataclass
 @dataclass
 class Comment(Content):
