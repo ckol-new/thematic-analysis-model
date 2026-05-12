@@ -1,6 +1,7 @@
 # scraping pipeline containing all classes and functions around scraping.
 from thematic_analysis_model.model.util import *
 from thematic_analysis_model.model.dclasses import *
+from pydantic import TypeAdapter
 from abc import ABC, abstractmethod
 from bs4 import BeautifulSoup
 import bs4 as soup
@@ -58,10 +59,10 @@ def request_page(url: str, header: dict = None) -> str:
 class ScrapingPipeline(ABC):
     # general pipeline operation goes as follows: *save seeds -> crawl -> *save crawl output -> scrape -> save scrape output
     # forum origin parameter is the origin the forum that is being scraped form
-    def __init__(self, seeds: list[str], crawl_save_location: Path | str | None, save_scrape_output: Path | str | None, forum_origin: str = None):
+    def __init__(self, seeds: list[str], crawl_save_location: Path | str | None, scrape_save_location: Path | str | None, forum_origin: str = None):
         self.seeds = seeds
         self.crawl_save_location = crawl_save_location
-        self.save_scrape_output = self.save_scrape_output
+        self.scrape_save_location = scrape_save_location
         self.crawl_output = self.run_crawler()
         self.forum_origin = forum_origin
         
@@ -201,16 +202,27 @@ class ScrapingPipeline(ABC):
 
     # save scrape output 
     def save_scrape_output(self):
-        # convert to list[str]
+        # adapter for data types
+        adapter = TypeAdapter(Post)
 
-        smart_save(self.save_scrape_output, )
+        jsonl_lines = []
+        # convert each post dataclass to json string
+        for post in self.scrape_output:
+            line = adapter.dump_json(post).decode()
+            jsonl_lines.append(line)
+        
+        # smart save
+        smart_save(self.scrape_save_location, jsonl_lines, 'jsonl')
+
+
+
 
 
 
 # ALZConnected.org specific scraping pipeline
 class ALZConnectedScrapingPipeline(ScrapingPipeline):
-    def __init__(self, seeds: list[str], crawl_save_location: Path | str | None, save_scrape_output: Path | str | None, forum_origin = 'alz_connected.org'):
-        super().__init__(seeds, crawl_save_location, save_scrape_output forum_origin)
+    def __init__(self, seeds: list[str], crawl_save_location: Path | str | None, scrape_save_location: Path | str | None, forum_origin = 'alz_connected.org'):
+        super().__init__(seeds, crawl_save_location, scrape_save_location, forum_origin)
     def __init__(self):
         super().__init__()
         self.forum_origin = 'alz_connected.org'
