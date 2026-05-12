@@ -9,6 +9,7 @@ import requests
 from pathlib import Path
 import uuid
 import re 
+import codecs
 
 # UTILITY functions
 # seed generator utility helps speed up process of generating seeds, which act as start nodes for the crawler to branch out from.
@@ -231,7 +232,24 @@ class ScrapingPipeline(ABC):
 
         return data_post
 
-
+    # pre-process text
+    @classmethod
+    def process_text(cls, text):
+        if not text:
+            return None
+        
+        # two step decoding for double escape
+        try:
+            text = codecs.decode(text, 'unicode-escape') 
+        except:
+            pass
+        for i in range(2):
+            try:
+                text = text.encode('latin-1').decode('utf-8')
+            except (UnicodeEncodeError, UnicodeDecodeError):
+                break
+            
+        return text 
 
 
 
@@ -269,10 +287,11 @@ class ALZConnectedScrapingPipeline(ScrapingPipeline):
         if not div_content: return None 
         # get text and add separator for all separating elements in html
         content_unclean = div_content.get_text(separator=' ', strip=True)
-        content_clean = re.sub(r'\s+', ' ', content_unclean) # remove additional white space
+        content_unclean = re.sub(r'\s+', ' ', content_unclean) # remove additional white space
         #TODO clean unicode characters
+        decoded_text = ScrapingPipeline.process_text(content_unclean)
 
-        content_split = re.sub(r'\. ', '.\n', content_clean) # separate each sentence by period
+        content_split = re.sub(r'\. ', '.\n', decoded_text) # separate each sentence by period
         
         return content_split
 
