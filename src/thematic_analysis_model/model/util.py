@@ -12,9 +12,11 @@ def __save_json(location: Path, data):
     location.write_text(json.dumps(data, indent=4), encoding='utf-8')
 
 # save jsonl
-#TODO implement __save_jsonl function
-def __save_jsonl(location: Path, data):
-    ...
+# turns lists into json lines
+def __save_jsonl(location: Path, data: list):
+    with location.open('w', encoding='utf-8') as f:
+        for item in data:
+            f.write(json.dumps(item) + '\n')
 
 # smart saver, 'dispatches' different save functions based on type of dave
 # automatically creates directory if does not exist
@@ -28,7 +30,7 @@ def smart_save(location: str | Path, data, format_type: str = 'txt'):
     formats = {
         'json': __save_json,
         'txt': __save_text,
-        # 'jsonl':  __save_jsonl
+        'jsonl':  __save_jsonl
     }
 
     # get save function based on format type
@@ -49,9 +51,12 @@ def __load_txt(location: Path):
 def __load_json(location: Path):
     return json.loads(location.read_text(encoding='utf-8'))
 
-#TODO implement load jsonl
-def __load_jsonl(location: Path):
-    ...
+def __load_jsonl(location: Path) -> list:
+    data = []
+    with location.open('r', encoding='utf-8') as f:
+        for line in f.readlines():
+            data.append(json.loads(line))
+    return data
 
 # smart load function automatically detects file type of data to be loaded, and loads it dispatches correct function accordingling
 def smart_load(location: Path | str):
@@ -65,7 +70,8 @@ def smart_load(location: Path | str):
     # format
     readers = {
         '.txt': __load_txt,
-        '.json': __load_json
+        '.json': __load_json,
+        '.jsonl': __load_jsonl
     }
     reader_function = readers.get(p.suffix.lower(), __load_txt) # get reader function, default to loading text
 
