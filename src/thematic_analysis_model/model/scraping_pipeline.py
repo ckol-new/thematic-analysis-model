@@ -59,28 +59,30 @@ def request_page(url: str, header: dict = None) -> str:
 class ScrapingPipeline(ABC):
     # general pipeline operation goes as follows: *save seeds -> crawl -> *save crawl output -> scrape -> save scrape output
     # forum origin parameter is the origin the forum that is being scraped form
-    def __init__(self, seeds: list[str], crawl_save_location: Path | str | None, scrape_save_location: Path | str | None, forum_origin: str = None):
+    def __init__(self, seeds: list[str] = None, crawl_save_location: Path | str | None = None, scrape_save_location: Path | str | None = None, forum_origin: str = None):
         self.seeds = seeds
         self.crawl_save_location = crawl_save_location
         self.scrape_save_location = scrape_save_location
-        self.crawl_output = self.run_crawler()
         self.forum_origin = forum_origin
-        
-        if crawl_save_location:
+        self.crawl_output = None
+    
+    # run pipeline method
+    def run_pipeline(self):
+        # run crawler
+        self.crawl_output = self.run_crawler()
+
+        # optionally save scrape output
+        if self.crawl_save_location: 
             self.save_crawl_output()
-        
-        if self.save_scrape_output: 
+
+        # run scraper
+        self.scrape_output = self.run_scraper()
+
+        # optionally save scrape output
+        if self.scrape_save_location: 
             self.save_scrape_output()
         
-    # alternate constructor that does not run the pipeline automatically
-    def __init__(self):
-        self.seeds = None
-        self.crawl_save_location = None
-        self.crawl_output = None
-        self.scrape_save_location = None
-        self.forum_origin = None
-        self.scrape_output = None
-    
+        
     # run_crawler method acts as 'queue' of all crawl operations to be performed on each 'seed' or start node
     # generate crawl output which is the list of all pages to be scraped from
     def run_crawler(self) -> list[str]:
@@ -95,7 +97,7 @@ class ScrapingPipeline(ABC):
 
     # crawl method is specific to each forum
     @abstractmethod
-    def crawl(self, seed:str) -> set[str] | None:
+    def crawl(self, seed:str) -> list[str] | None:
         ...
 
     # save crawl output enables docuemntation of every website scraped
@@ -236,15 +238,12 @@ class ScrapingPipeline(ABC):
 
 # ALZConnected.org specific scraping pipeline
 class ALZConnectedScrapingPipeline(ScrapingPipeline):
-    def __init__(self, seeds: list[str], crawl_save_location: Path | str | None = None, scrape_save_location: Path | str | None = None, forum_origin = 'alz_connected.org'):
+    def __init__(self, seeds: list[str] = None, crawl_save_location: Path | str | None = None, scrape_save_location: Path | str | None = None, forum_origin = 'alz_connected.org'):
         super().__init__(seeds, crawl_save_location, scrape_save_location, forum_origin)
-    def __init__(self):
-        super().__init__()
-        self.forum_origin = 'alz_connected.org'
 
     
     # implement crawl indivudal page method
-    def crawl(self, url: str) -> set[str] | None:
+    def crawl(self, url: str) -> list[str] | None:
         html = request_page(url)
         if not html: return None
 
@@ -256,7 +255,7 @@ class ALZConnectedScrapingPipeline(ScrapingPipeline):
             if '/discussion/' in href:
                 links.add(href)
 
-        return links
+        return list(links)
 
 
     def scrape_title(self, soup: BeautifulSoup):
@@ -300,6 +299,7 @@ class ALZConnectedScrapingPipeline(ScrapingPipeline):
         # get list of soup objects for comments
         commentlist_div = soup.find('ul', class_='MessageList DataList Comments pageBox')
         # get each individual comment soup object from comment list
+        if not commentlist_div: return None
         comments_div: list = commentlist_div.find_all('div', class_='Comment')
 
         comments = []

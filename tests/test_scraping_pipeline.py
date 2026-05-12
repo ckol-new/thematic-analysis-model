@@ -68,6 +68,7 @@ def test_ALZConnected_crawler():
     p = pathlib.Path.cwd() / 'tests' / 'testing_data' / 'test_crawl_output.txt'
 
     pipeline = ALZConnectedScrapingPipeline(seeds=seed, crawl_save_location=p, scrape_save_location = None)   
+    pipeline.crawl_output = pipeline.run_crawler()
 
     # set of posts as scraped Monday 11th, May 2026, 11:30AM
     expected_list = [
@@ -89,9 +90,8 @@ def test_ALZConnected_crawler():
     ]
     expected_set = set(expected_list)
 
-    assert pipeline.crawl_output == expected_set
+    assert set(pipeline.crawl_output) == expected_set
 
-test_ALZConnected_crawler()
 
 
 def test_ALZConnected_scraper_serialization():
@@ -101,8 +101,6 @@ def test_ALZConnected_scraper_serialization():
 
     # get scraper
     scraper = ALZConnectedScrapingPipeline()    
-
-    # override fields
     scraper.crawl_output = crawl_input
     path = Path.cwd() / 'tests' / 'testing_data' / 'test_scrape_output.jsonl'
     scraper.scrape_save_location = path
