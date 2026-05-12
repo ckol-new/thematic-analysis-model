@@ -77,7 +77,7 @@ class ScrapingPipeline(ABC):
         self.seeds = None
         self.crawl_save_location = None
         self.crawl_output = None
-        self.save_scrape_output = None
+        self.scrape_save_location = None
         self.forum_origin = None
         self.scrape_output = None
     
@@ -213,6 +213,21 @@ class ScrapingPipeline(ABC):
         
         # smart save
         smart_save(self.scrape_save_location, jsonl_lines, 'jsonl')
+    
+    # load scrape output
+    @classmethod
+    def load_scraped_output(cls, location: Path | str):
+        # adapter for data types
+        adapter = TypeAdapter(Post)
+
+        # load json lines
+        data = smart_load(location)
+
+        data_post = [
+            adapter.validate_json(item) for item in data
+        ]
+
+        return data_post
 
 
 
@@ -221,7 +236,7 @@ class ScrapingPipeline(ABC):
 
 # ALZConnected.org specific scraping pipeline
 class ALZConnectedScrapingPipeline(ScrapingPipeline):
-    def __init__(self, seeds: list[str], crawl_save_location: Path | str | None, scrape_save_location: Path | str | None, forum_origin = 'alz_connected.org'):
+    def __init__(self, seeds: list[str], crawl_save_location: Path | str | None = None, scrape_save_location: Path | str | None = None, forum_origin = 'alz_connected.org'):
         super().__init__(seeds, crawl_save_location, scrape_save_location, forum_origin)
     def __init__(self):
         super().__init__()

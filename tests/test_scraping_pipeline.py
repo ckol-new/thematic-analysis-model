@@ -67,7 +67,7 @@ def test_ALZConnected_crawler():
     seed = ['https://alzconnected.org/categories/i-have-younger-onset-alzheimers/p10']
     p = pathlib.Path.cwd() / 'tests' / 'testing_data' / 'test_crawl_output.txt'
 
-    pipeline = ALZConnectedScrapingPipeline(seeds=seed, crawl_save_location=p)   
+    pipeline = ALZConnectedScrapingPipeline(seeds=seed, crawl_save_location=p, scrape_save_location = None)   
 
     # set of posts as scraped Monday 11th, May 2026, 11:30AM
     expected_list = [
@@ -91,7 +91,32 @@ def test_ALZConnected_crawler():
 
     assert pipeline.crawl_output == expected_set
 
+test_ALZConnected_crawler()
 
 
+def test_ALZConnected_scraper_serialization():
+    # scrape one post data: https://alzconnected.org/discussion/56167/friend-still-asking-why-me
+    # scraped Tue May 12 2026, 2:00pm 
+    crawl_input = ['https://alzconnected.org/discussion/56167/friend-still-asking-why-me']
+
+    # get scraper
+    scraper = ALZConnectedScrapingPipeline()    
+
+    # override fields
+    scraper.crawl_output = crawl_input
+    path = Path.cwd() / 'tests' / 'testing_data' / 'test_scrape_output.jsonl'
+    scraper.scrape_save_location = path
+
+    # run scraping pipeline 
+    output = scraper.run_scraper()
+    scraper.scrape_output = output
+
+    # save to file
+    scraper.save_scrape_output()
+
+    # smart load
+    posts = scraper.load_scraped_output(path)
+
+    assert posts[0] == scraper.scrape_output[0]
 
 
