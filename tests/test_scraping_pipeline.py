@@ -50,6 +50,17 @@ def test_save_and_read_seeds():
 
     assert seeds == output
 
+# test method for requesting page from html
+# scraping from https://www.scrapethissite.com/pages/ (Tue May 12 2026, 10:30AM)
+# if tests starts failing, website might have changed
+def test_request_page():
+    link = 'https://www.scrapethissite.com/pages/'
+    page_html = request_page(link)
+    test_path = pathlib.Path.cwd() / 'tests' / 'testing_data' / 'testing_request_page.txt'
+    expected_html = smart_load(test_path)   
+
+    assert page_html == expected_html
+
 # testing ALZConnected.org crawler, using https://alzconnected.org/categories/i-have-younger-onset-alzheimers/p10 as the seed
 # note test written Monday 11th, May 2026 11:30 AM, so links may change. Keep this in mind if tests start to fail.
 def test_ALZConnected_crawler():

@@ -42,10 +42,13 @@ def request_page(url: str, header: dict = None) -> str:
             ...
         else: print('REQUEST FAILED: ', response.status_code)
 
+        html_text = response.text
+        response.close() # close connection to server I think
+
+        return html_text
+
     except requests.exceptions.RequestException as e:
         raise Exception(e)
-
-    return response.text
 
 # abstract scraping pipeline class: because each forum has unique html structure, and scraping rules, it needs its own implementation of this class
 class ScrapingPipeline(ABC):
@@ -174,25 +177,18 @@ class ALZConnectedScrapingPipeline(ScrapingPipeline):
         return links
 
 
-    @abstractmethod
     def scrape_title(self):
         ...
-    @abstractmethod
     def scrape_content(self):
         ...
-    @abstractmethod
     def scrape_date(self):
         ...
-    @abstractmethod
     def scrape_username(self):
         ...
-    @abstractmethod
     def scrape_userid(self):
         ...
     # scrape comments plural
-    @abstractmethod
     def scrape_comments(self):
-        @abstractmethod
         def scrape_comment(self):
             ...
         ...
