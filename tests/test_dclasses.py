@@ -78,6 +78,23 @@ def test_post():
     p2 = adapter.validate_json(input_json)
     assert p == p2
 
+#tests if posts work if there are no comments
+def test_post_nocomments():
+    a = Author(test_var['username'], test_var['userid'])
+    m = Metadata(uuid=test_var['uuid'], author=a, url=test_var['url'], date=test_var['date'], origin=test_var['origin'])
+    p = Post(test_var['content'], m, test_var['title'], None)
+
+    adapter = TypeAdapter(Post)
+
+    # test serialization
+    expected = {'content': 'text', 'metadata': {'uuid': '123', 'author': {'username': 'user', 'userid': 'userid'}, 'url': 'test.com', 'date': 'today', 'origin': 'forum.com'}, 'title': 'title', 'comments': None}
+    data = json.loads(adapter.dump_json(p))
+    assert expected == data
+
+    # test deserilaization
+    input_json = adapter.dump_json(p).decode()
+    p2 = adapter.validate_json(input_json)
+    assert p == p2
 
 
 
