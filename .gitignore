@@ -8,3 +8,6 @@ wheels/
 
 # Virtual environments
 .venv
+
+# files
+project_data/
