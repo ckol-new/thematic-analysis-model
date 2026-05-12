@@ -92,16 +92,14 @@ class ScrapingPipeline(ABC):
     def run_scraper(self):
         scrape_output = set() 
         for crawl_seed in self.crawl_output:
-            scraped_post = self.scrape(crawl_seed)
-            #TODO Validation steps:
-            #   Uniqueness? No duplicates
-            #   All data included: title, url, content, author, date, comments are optional
-            #   Minimum length?
+            scraped_post: Post = self.scrape(crawl_seed)
+            # validation step
+            if not self.validate_post(scraped_post): continue
             scrape_output.add(scraped_post())
 
     # scrape is a single scraping operation for a single link. It corresponds to the scraping of one single forum post.
     # is unique to each forum.
-    def scrape(self, url: str):
+    def scrape(self, url: str) -> Post | None:
         # get page
         #TODO implement customization of header
         page_html = request_page(url)
@@ -119,7 +117,6 @@ class ScrapingPipeline(ABC):
         #   get date
         date = self.scrape_date()
 
-        #   get url (easy)
 
         #   get author 
         #       get user name
@@ -135,8 +132,23 @@ class ScrapingPipeline(ABC):
         metadata = Metadata(my_uuid, author, url, date, self.forum_origin)
         post = Post(content, metadata, title, comments)
 
+        return post
+
     
-        ...
+    # method validates post returning true if valid, false if not
+    def validate_post(self, post: Post) -> bool:
+        # check post length (minimum characters)
+        # check post title
+        # check post meta data (*must have url, date, author?)
+        #TODO implement duplicate checking
+
+        if len(post.content) < 30: return False
+        if not post.title: return False
+        if not post.metadata.url: return False
+        if not post.metadata.date: return False
+
+        return True
+
 
     # abstract methods for getting each componenet of the post: implemented by each specific scraping pipeline
     @abstractmethod
