@@ -1,9 +1,11 @@
 # scraping pipeline containing all classes and functions around scraping.
 from thematic_analysis_model.model.util import *
+from thematic_analysis_model.model.dclasses import *
 from abc import ABC, abstractmethod
 from bs4 import BeautifulSoup
 import requests
 from pathlib import Path
+import uuid
 
 # UTILITY functions
 # seed generator utility helps speed up process of generating seeds, which act as start nodes for the crawler to branch out from.
@@ -53,10 +55,12 @@ def request_page(url: str, header: dict = None) -> str:
 # abstract scraping pipeline class: because each forum has unique html structure, and scraping rules, it needs its own implementation of this class
 class ScrapingPipeline(ABC):
     # general pipeline operation goes as follows: *save seeds -> crawl -> *save crawl output -> scrape -> save scrape output
-    def __init__(self, seeds: list[str], crawl_save_location: Path | str | None):
+    # forum origin parameter is the origin the forum that is being scraped form
+    def __init__(self, seeds: list[str], crawl_save_location: Path | str | None, forum_origin: str = None):
         self.seeds = seeds
         self.crawl_save_location = crawl_save_location
         self.crawl_output = self.run_crawler()
+        self.forum_origin = forum_origin
         
         if crawl_save_location:
             self.save_crawl_output()
@@ -103,23 +107,33 @@ class ScrapingPipeline(ABC):
         page_html = request_page(url)
         
         # get title
+        title = self.scrape_title()
 
         # get content
+        content = self.scrape_content()
 
         # get metadata
+        # get unique id
+        my_uuid = uuid.uuid4()
+
         #   get date
+        date = self.scrape_date()
 
         #   get url (easy)
 
         #   get author 
-
         #       get user name
-
+        username = self.scrape_username()       
         #       get user id
+        userid = self.scrape_userid()
 
         #   get comments: recursively call
+        comments = self.scrape_comments()
 
         # create objects, must package comments inside post object
+        author = Author(username, userid)
+        metadata = Metadata(my_uuid, author, url, date, self.forum_origin)
+        post = Post(content, metadata, title, comments)
 
     
         ...
@@ -141,6 +155,7 @@ class ScrapingPipeline(ABC):
     def scrape_userid(self):
         ...
     # scrape comments plural
+    #   must be able to return None if necessary
     @abstractmethod
     def scrape_comments(self):
         @abstractmethod
@@ -157,8 +172,8 @@ class ScrapingPipeline(ABC):
 
 # ALZConnected.org specific scraping pipeline
 class ALZConnectedScrapingPipeline(ScrapingPipeline):
-    def __init__(self, seeds: list[str], crawl_save_location: Path | str | None):
-        super().__init__(seeds, crawl_save_location)
+    def __init__(self, seeds: list[str], crawl_save_location: Path | str | None, forum_origin = 'alz_connected.org'):
+        super().__init__(seeds, crawl_save_location, forum_origin)
 
     
     # implement crawl indivudal page method
