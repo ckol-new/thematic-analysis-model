@@ -52,3 +52,4 @@ class EmbeddedComment(EmbeddedContent):
 class EmbeddedPost(EmbeddedContent):
     embedded_title: list[np.ndarray]
     embedded_comments: Optional[list[EmbeddedComment]] = Field(default=list) # forward reference, default empty list
+
