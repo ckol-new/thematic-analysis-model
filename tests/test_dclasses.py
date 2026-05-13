@@ -1,9 +1,12 @@
 from thematic_analysis_model.model.dclasses import *
+from thematic_analysis_model.model.util import *
 from pydantic.dataclasses import dataclass
+from pydantic import RootModel
 from dataclasses import asdict
 from pydantic import TypeAdapter
 import pytest
 import json
+import numpy as np
 
 test_var = {
     'uuid': '123',
@@ -97,6 +100,33 @@ def test_post_nocomments():
     assert p == p2
 
 
+# test embedded post serialization, and deserialization, nested objects as well
+def test_embedded_post():
+    author_dict = {'username':'username', 'userid':'userid'}
+    author = Author(**author_dict)
+    metadata_dict = {'uuid':'test', 'author':author, 'url':'test.com', 'date':'date', 'origin':'origin.com'}
+    metadata = Metadata(**metadata_dict)
+    narr = np.array([1,2,3])
+    comment = EmbeddedComment(metadata=metadata, embedded_content=[narr], embedded_comments=None)
+    comment2 = EmbeddedComment(metadata=metadata, embedded_content=[narr], embedded_comments=[comment])
+    post = EmbeddedPost(metadata, [narr], [narr], [comment2])
 
+    adapter = TypeAdapter(EmbeddedPost)
+
+    # test serialization
+    expected = {'metadata': {'uuid': 'test', 'author': {'username': 'username', 'userid': 'userid'}, 'url': 'test.com', 'date': 'date', 'origin': 'origin.com'}, 'embedded_content': [[1, 2, 3]], 'embedded_title': [[1, 2, 3]], 'embedded_comments': [{'metadata': {'uuid': 'test', 'author': {'username': 'username', 'userid': 'userid'}, 'url': 'test.com', 'date': 'date', 'origin': 'origin.com'}, 'embedded_content': [[1, 2, 3]], 'embedded_comments': [{'metadata': {'uuid': 'test', 'author': {'username': 'username', 'userid': 'userid'}, 'url': 'test.com', 'date': 'date', 'origin': 'origin.com'}, 'embedded_content': [[1, 2, 3]], 'embedded_comments': None}]}]}
+    data = adapter.dump_python(post)
+    assert expected ==  data
+    # save to file
+    location = Path.cwd() / 'tests' / 'testing_data' / 'test_embedded_save_single.jsonl'
+    smart_save(location, [json.dumps(data)], 'jsonl')
+
+    post_loaded =  adapter.validate_json(smart_load(location)[0])# note smart load jsonl returns list
+
+    assert post == post_loaded
+
+
+test_embedded_post()
+    
 
 

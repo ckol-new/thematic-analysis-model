@@ -38,7 +38,19 @@ class Post(Content):
     title: str
     comments: Optional[list[Comment]] = Field(default=list)
 
+# smart compare for embedded data classes
+def smart_compare(val1, val2):
+    if type(val1) != type(val2):
+        return False
 
+    if isinstance(val1, np.ndarray):
+        return np.array_equal(val1, val2)
+    elif isinstance(val1, list):
+        return len(val1) == len(val2) and all(smart_compare(a, b) for a, b in zip(val1, val2))
+    elif isinstance(val1, dict):
+        return val1.keys() == val2.keys() and all(smart_compare(val1[k], val2[k]) for k in val1)
+    else:
+        return val1 == val2
 
 # annotated types for embedded dataclass serialization/deserialization
 #NOTE it is important to do this to not have to use python lists (very slow)
@@ -55,9 +67,22 @@ CustomNpArray = Annotated[
 
 # now sentences are embedded as np.ndarrays, therefore content is now a list of np.ndarrays
 @dataclass(config=ConfigDict(arbitrary_types_allowed=True))
-class EmbeddedContent(ABC):
+class EmbeddedContent(ABC): # inherits form root model for better serialization of nested complex data types
     metadata: Metadata
     embedded_content: list[CustomNpArray]
+
+    def __eq__(self, other):
+        if not isinstance(other, EmbeddedContent): return False
+        if self.metadata != other.metadata: return False
+        if len(self.embedded_conten) != len(other.embedded_content): return False
+        for t1, t2 in zip(self.embedded_content, other.embedded_content):
+            if isinstance(t1, np.ndarray):
+                if not np.array_equal(t1, t2): return False
+            elif t1 != t2: return False
+
+        return True
+
+
 
 @dataclass(config=ConfigDict(arbitrary_types_allowed=True))
 class EmbeddedComment(EmbeddedContent):

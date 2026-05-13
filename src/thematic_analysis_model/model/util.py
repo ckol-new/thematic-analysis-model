@@ -13,6 +13,7 @@ def __save_json(location: Path, data):
 
 # save jsonl
 # turns lists into json lines
+#NOTE MUST PASS DATA AS LIST
 def __save_jsonl(location: Path, data: list):
     with location.open('w', encoding='utf-8') as f:
         for item in data:
