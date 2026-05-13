@@ -54,6 +54,6 @@ class EmbeddingPipeline:
     # load embeddings class method
     @classmethod
     def load_embeddings(cls, location: Path | str):
-
+        ...
 
     
