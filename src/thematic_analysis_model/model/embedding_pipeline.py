@@ -43,14 +43,11 @@ class EmbeddingPipeline:
 
         # while there is item in queue
         while len(queue) is not 0:
-            print(len(queue))
             current = queue.pop()
 
             # check if has comments: add to queue
             if hasattr(current, 'comments'):
-                print('has attr')
                 if current.comments: 
-                    print('adding comments')
                     queue = queue + current.comments
 
             # embed content of current content being checked

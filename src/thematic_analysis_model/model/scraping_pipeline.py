@@ -112,7 +112,10 @@ class ScrapingPipeline(ABC):
     def run_scraper(self) -> list[Post] | None:
         scrape_output = []
         for crawl_seed in self.crawl_output:
-            scraped_post: Post = self.scrape(crawl_seed)
+            try:
+                scraped_post: Post = self.scrape(crawl_seed)
+            except Exception as e:
+                print(f'ran into issue at {crawl_seed} exception: {e}')
             # validation step
             if not self.validate_post(scraped_post): continue
             scrape_output.append(scraped_post)
@@ -346,7 +349,7 @@ class ALZConnectedScrapingPipeline(ScrapingPipeline):
         my_uuid = str(uuid.uuid4())
         metadata = Metadata(my_uuid, author, url, date, forum_origin, date_accessed)
         #TODO figure out how to handle sub-comments of comments
-        comment = Comment(content, metadata, None) 
+        comment = Comment(content, metadata) 
 
         # validate comment
         if not self.validate_comment(comment): return None

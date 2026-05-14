@@ -5,6 +5,7 @@ from pydantic import Field, BeforeValidator, PlainSerializer, RootModel, ConfigD
 from abc import ABC
 from typing import Optional
 
+
 # author dataclass
 @dataclass
 class Author:
@@ -30,7 +31,7 @@ class Content(ABC):
 # comment dataclass
 @dataclass
 class Comment(Content):
-    comments: Optional[list['Comment']] = Field(default=list) # forward reference to Comment class, or default to empty list
+    comments: Optional[list['Comment']] = Field(default_factory=list) # forward reference to Comment class, or default to empty list
 
 # post dataclas
 @dataclass
