@@ -35,20 +35,15 @@ class QueryEngine:
         # for each embedding, get cosine similarity
         for embedding in self.embedded_db:
             similarity = self.cosine_similarity(embedded_query, embedding.embedded_text)
-            query_pair.append((embedding.uuid, similarity))
+            query_pair.append((embedding.metadata.uuid, similarity))
 
         # sort query pair
-        query_pair.sort(lambda x: x[1], reverse=True)
+        query_pair.sort(key=lambda x: x[1])
         # only take highest top_n similarities
         del query_pair[self.top_n:]
 
         # convert to dict
-        dict(query_pair)
-        
-        return query_pair
-
-
-
+        return dict(query_pair)
 
 
 
@@ -73,20 +68,20 @@ class QueryEngine:
             scraped_db = scraped_db + ScrapingPipeline.load_scraped_output(location)
         
         # match uuids
-        matches = set()
+        matches = []
         for post in scraped_db:
-            if post.uuid in target: 
-                matches.add(post)
+            if post.metadata.uuid in target: 
+                matches.append(post)
                 continue
             elif post.comments:
                 for comment in post.comments:
-                    if comment.uuid in target:
-                        matches.add(comment)
+                    if comment.metadata.uuid in target:
+                        matches.append(comment)
                         continue
 
         display_results = []
         for match in matches:
-            display_results.append(match, query_pair[match.uuid])
+            display_results.append((match, query_pair[match.metadata.uuid]))
 
         return display_results
 
