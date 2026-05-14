@@ -5,6 +5,7 @@ from pydantic import RootModel
 from dataclasses import asdict
 from pydantic import TypeAdapter
 import pytest
+import uuid
 import json
 import numpy as np
 from sentence_transformers import SentenceTransformer
@@ -151,6 +152,17 @@ def test_embedded_sentence():
     loaded_embedded_sentence = adapter.validate_json(smart_load(location)[0])
     assert loaded_embedded_sentence == embedded_sentence
 
+
+def test_efficient_embedded_sentence():
+    my_uuid = str(uuid.uuid4)
+    narr = np.array([1, 2, 3])
+    e_sentence = EfficientEmbeddedSentence(my_uuid, narr)
+    e_sentence2 = EfficientEmbeddedSentence(my_uuid, narr)
+
+    # test __eq__
+    assert e_sentence == e_sentence2
+
+    
 
 
 
