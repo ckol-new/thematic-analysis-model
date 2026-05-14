@@ -21,13 +21,28 @@ class QueryEngine:
             
         self.embedded_db = embedded_db
 
-
     # query each embedded sentence
     def run_query(self, query: str):
         if not query:
             return None
 
         embedded_query = self.embed_query(query)
+
+        # query pair is the key, val pair of uuid and cosine similarity
+        query_pair = []
+
+        # for each embedding, get cosine similarity
+        for embedding in self.embedded_db:
+            similarity = self.cosine_similarity(embedded_query, embedding.embedded_text)
+            query_pair.append((embedding.uuid, similarity))
+
+        # sort query pair
+        query_pair.sort(lambda x: x[1], reverse=True)
+        
+        return query_pair
+
+
+
 
 
 

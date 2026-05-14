@@ -105,3 +105,14 @@ class EmbeddingPipeline:
 
         return embeddings
     
+    # load efficient embeddings
+    @classmethod
+    def load_efficient_embeddings(cls, location: Path | str) -> list[EfficientEmbeddedSentence]:
+        adapter = TypeAdapter(EfficientEmbeddedSentence)
+        embedding_list: list = smart_load(location)
+        embeddings: list[EfficientEmbeddedSentence] = []
+        for embedding_data in embedding_list:
+            embedding = adapter.validate_json(embedding_data)
+            embeddings.append(embedding)
+
+        return embeddings
