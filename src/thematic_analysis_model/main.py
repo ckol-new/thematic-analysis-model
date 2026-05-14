@@ -16,7 +16,7 @@ scraping_config = {
 embedding_config = {
     'data_location': save_base / 'scrape_output' / 'scrape_alzconnected_livingwdementia_save1.jsonl',
     'save_embeddings_location': save_base / 'embedding_output' / 'embeddings_alzconnected_livingwdementia_save1.jsonl',
-    'model': SentenceTransformer('all-MiniLM-L6-v2'),
+    # 'model': SentenceTransformer('all-MiniLM-L6-v2'),
     'embedding_type': 'all-MiniLM-L6-v2'
 }
 
@@ -28,9 +28,25 @@ def pipeline_run():
     scrape_pipeline.run_pipeline()
     embedding_pipeline.run_pipeline()
 
+def pool():
+    embedding_1_location = save_base / 'embedding_output' / 'embeddings_alzconnected_livingwdementia_save1.jsonl'
+    embedding_2_location = save_base / 'embedding_output' / 'embeddings_alzconnected_youngeronset_save1.jsonl'
+
+    scraped_1_location= save_base / 'scrape_output' / 'scrape_alzconnected_livingwdementia_save1.jsonl'
+    scraped_2_location= save_base / 'scrape_output' / 'scrape_alzconnected_youngeronset_save1.jsonl'
+
+    embedding_pooled_location = save_base / 'embedding_output' / 'embedded_pooled_test1.jsonl'
+    scraped_pooled_location = save_base / 'scrape_output' / 'scraped_pooled_test1.jsonl'
+
+    scrape_files = [scraped_1_location, scraped_2_location]
+    embed_files = [embedding_1_location, embedding_2_location]
+
+    pool_jsonl(scrape_files, scraped_pooled_location)
+    pool_jsonl(embed_files, embedding_pooled_location)
+
 
 def main():
-    pipeline_run()
+    pool()
 
 if __name__ == '__main__':
     main()

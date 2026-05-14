@@ -2,6 +2,7 @@
 import pathlib 
 from pathlib import Path
 import json
+import itertools
 
 # save text 
 def __save_text(location: Path, data):
@@ -82,6 +83,18 @@ def smart_load(location: Path | str):
     except Exception as e:
         print(f'Failed to parse {p.name}: {e}')
         return None
+
+# pooler of data/splitter of data
+# MUST BE JSONL
+def pool_jsonl(files: list[Path | str], pooled_data_location: Path | str):
+    # load files, pool lines (appending them together)
+    data_pool = []
+    for i in files:
+        data = smart_load(i)
+        data_pool = data_pool + data
+
+    # rewrite to new file
+    smart_save(pooled_data_location, data_pool, 'jsonl')
 
 
     
