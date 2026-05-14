@@ -1,4 +1,5 @@
 from thematic_analysis_model.model.embedding_pipeline import EmbeddingPipeline
+from thematic_analysis_model.model.scraping_pipeline import ScrapingPipeline
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
 import numpy as np
@@ -38,6 +39,11 @@ class QueryEngine:
 
         # sort query pair
         query_pair.sort(lambda x: x[1], reverse=True)
+        # only take highest top_n similarities
+        del query_pair[self.top_n:]
+
+        # convert to dict
+        dict(query_pair)
         
         return query_pair
 
@@ -54,3 +60,35 @@ class QueryEngine:
     # cosine similarity for dense vectors
     def cosine_similarity(self, A: np.ndarray, B: np.ndarray):
         return A.dot(B) / (np.linalg.norm(A) * np.linalg.norm(B))
+
+    # display query method
+    @classmethod
+    def get_result_objects(cls, query_pair: dict, *data_locations):
+        # get set of uuid
+        target = set([key for key in query_pair.keys()])
+
+        # added post objects to list, look for uuid matches, only keep matches
+        scraped_db = []
+        for location in data_locations:
+            scraped_db = scraped_db + ScrapingPipeline.load_scraped_output(location)
+        
+        # match uuids
+        matches = set()
+        for post in scraped_db:
+            if post.uuid in target: 
+                matches.add(post)
+                continue
+            elif post.comments:
+                for comment in post.comments:
+                    if comment.uuid in target:
+                        matches.add(comment)
+                        continue
+
+        display_results = []
+        for match in matches:
+            display_results.append(match, query_pair[match.uuid])
+
+        return display_results
+
+            
+        
