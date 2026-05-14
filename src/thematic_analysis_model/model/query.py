@@ -84,6 +84,8 @@ class QueryEngine:
             for embedded_sentence in query_pair:
                 if match.metadata.uuid == embedded_sentence.metadata.uuid:
                     display_results.append((match, embedded_sentence.sentence, query_pair[embedded_sentence]))
+        
+        display_results.sort(key=lambda x: x[2], reverse=True)
 
         return display_results
 
