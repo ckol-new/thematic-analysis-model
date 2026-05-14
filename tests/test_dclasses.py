@@ -126,6 +126,31 @@ def test_embedded_post():
 
     assert post == post_loaded
 
+def test_embedded_sentence():
+    # set up embedded sentence object
+    author_dict = {'username':'username', 'userid':'userid'}
+    author = Author(**author_dict)
+    embedded_metadata_dict = {'uuid':'test', 'author':author, 'url':'test.com', 'date':'date', 'origin':'origin.com', 'type':'post', 'sentence_num':1}
+    embedded_metadata = EmbeddedMetadata(**embedded_metadata_dict)
+    narr = np.array([1,2,3])
+    embedded_sentence = EmbeddedSentence(embedded_metadata, narr)
+
+    # type adapter
+    adapter = TypeAdapter(EmbeddedSentence)
+
+    # test serialization
+    expected = {"metadata":{"uuid":"test","author":{"username":"username","userid":"userid"},"url":"test.com","date":"date","origin":"origin.com","type":"post","sentence_num":1},"embedded_text":[1,2,3]}
+    data = adapter.dump_python(embedded_sentence)
+    assert data == expected
+
+    # test deserialization
+    location = Path.cwd() / 'tests' / 'testing_data' / 'test_embedded_sentence.jsonl'
+    smart_save(location, [json.dumps(data)], 'jsonl')
+    loaded_embedded_sentence = adapter.validate_json(smart_load(location)[0])
+    assert loaded_embedded_sentence == embedded_sentence
+
+
+
 
 
 

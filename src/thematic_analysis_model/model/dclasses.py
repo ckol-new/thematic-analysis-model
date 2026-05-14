@@ -112,10 +112,15 @@ class EmbeddedMetadata(Metadata):
     type: str
     sentence_num: int
 
-
 # class EmbeddedSentence() is an embedding for an indiviudal sentence, not packaged into a Post/Comment object
 # this will most likely what i use
-@dataclass
+@dataclass(config=ConfigDict(arbitrary_types_allowed=True))
 class EmbeddedSentence():
     metadata: EmbeddedMetadata
     embedded_text: CustomNpArray
+
+    def __eq__(self, other):
+        if not isinstance(other, EmbeddedSentence): return False
+        if self.metadata != other.metadata: return False
+        if not np.array_equal(self.embedded_text, other.embedded_text): return False
+        return True
