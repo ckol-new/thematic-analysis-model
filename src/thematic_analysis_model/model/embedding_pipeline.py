@@ -7,8 +7,11 @@ from sentence_transformers import SentenceTransformer, util
 
 # initialize with model you want to embed
 class EmbeddingPipeline:
-    def __init__(self, data_location: Path | str | None, save_embeddings_location: Path | str | None, model, mmbedding_type: str | None):
-        ...
+    def __init__(self, data_location: Path | str | None, save_embeddings_location: Path | str | None, model: SentenceTransformer, embedding_type: str | None):
+        self.data_location = data_location
+        self.save_embeddings_location = save_embeddings_location
+        self.model = model
+        self.embedding_type = embedding_type
 
     # run pipeline master method
     def run_pipeline():
@@ -21,32 +24,12 @@ class EmbeddingPipeline:
         # save embeddedings to new file.
         ...
 
-    # embed comment, embeds all posts by calling traverse_embed_post for each post.
-    def embed_data():
-        # for post in posts, traverse_embed_post(post)
-        ...
     
-    # method for traversing nested comments
-    # depth first traversal of comments attached to post
-    def traverse_embed_post(post: Post):
-        # queue of data structure objects to traverse (depth first search)
 
-        # if post has comment, add comments to queue
-
-        # for each comment, check if have comment, for each comment add to queue
-        # repeat until no more comments
-
-        # traverse queue, embed text and initialize new embedding data objects
-
-        # return embedded post
-        ...
-
-    # embed text
-    # embeds each sentence separately
-    def embed_text():
-        # embed each sentence add to list
-        # return list
-        ...
+    # embed sentence
+    def embed_sentence(self, sentence: str):
+        embedding = self.model.encode(sentence)
+        return embedding
 
     # save embeddings
     def save_embeddings(self, embeddings, location: Path | str):
