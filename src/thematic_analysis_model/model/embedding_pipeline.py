@@ -24,11 +24,15 @@ class EmbeddingPipeline:
         # save embeddedings to new file.
         ...
 
-    
+
+    # split text into sentence by newline character
+    def split_text(self, text: str) -> list[str]:
+        sentences: list = text.split('\n')
+        return sentences
 
     # embed sentence
-    def embed_sentence(self, sentence: str):
-        embedding = self.model.encode(sentence)
+    def embed_sentence(self, sentence: str) -> np.ndarray:
+        embedding: np.ndarray = self.model.encode(sentence)
         return embedding
 
     # save embeddings
