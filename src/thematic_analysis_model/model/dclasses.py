@@ -127,3 +127,15 @@ class EmbeddedSentence():
         if self.metadata != other.metadata: return False
         if not np.array_equal(self.embedded_text, other.embedded_text): return False
         return True
+
+# efficient embedded sentence, that lowers ram usage
+@dataclass(config=ConfigDict(arbitrary_types_allowed=True))
+class EfficientEmbeddedSentence:
+    uuid: str
+    embedded_text: CustomNpArray
+
+    def __eq__(self, other):
+        if not isinstance(other, EfficientEmbeddedSentence): return False
+        if self.uuid != other.uuid: return False
+        if not np.array_equal(self.embedded_text, other.embedded_text): return False
+        return True
