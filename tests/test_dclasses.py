@@ -14,6 +14,7 @@ test_var = {
     'url': 'test.com',
     'date': 'today',
     'origin': 'forum.com',
+    'date_accessed': 'right now',
     'username': 'user',
     'userid': 'userid',
     'content': 'text',
@@ -42,22 +43,23 @@ def test_metadata():
     url = 'test.com'
     date = 'today'
     origin = 'forum.com'
+    date_accessed = 'right now'
 
     username = 'user'
     userid = 'userid'
     author = Author(username, userid)
 
-    metadata = Metadata(uuid, author, url, date, origin)
+    metadata = Metadata(uuid, author, url, date, origin, date_accessed)
     adapter = TypeAdapter(Metadata)
     
     # test serialization
-    expected = {'uuid': '123', 'author': {'username': 'user', 'userid': 'userid'}, 'url': 'test.com', 'date': 'today', 'origin': 'forum.com'}
+    expected = {'uuid': '123', 'author': {'username': 'user', 'userid': 'userid'}, 'url': 'test.com', 'date': 'today', 'origin': 'forum.com', 'date_accessed': 'right now'}
     data = json.loads(adapter.dump_json(metadata).decode())
     assert expected == data
 
     # test deserialization
     #NOTE it is important for the string to have "" for any json or it will fail; python excepts both but json does not
-    input_str = {'uuid':'123', 'author':{'username':'user', 'userid':'userid'}, 'url':'test.com', 'date':'today', 'origin':'forum.com'}
+    input_str = {'uuid':'123', 'author':{'username':'user', 'userid':'userid'}, 'url':'test.com', 'date':'today', 'origin':'forum.com', 'date_accessed':'right now'}
     metadata2 = adapter.validate_python(input_str)
     assert metadata == metadata2
 
@@ -66,14 +68,14 @@ def test_metadata():
 # also tests nesting
 def test_post():
     a = Author(test_var['username'], test_var['userid'])
-    m = Metadata(uuid=test_var['uuid'], author=a, url=test_var['url'], date=test_var['date'], origin=test_var['origin'])
+    m = Metadata(uuid=test_var['uuid'], author=a, url=test_var['url'], date=test_var['date'], origin=test_var['origin'], date_accessed=test_var['date_accessed'])
     c = Comment(test_var['content'], m, None)
     p = Post(test_var['content'], m, test_var['title'], [c])
 
     adapter = TypeAdapter(Post)
 
     # test serialization
-    expected = {'content': 'text', 'metadata': {'uuid': '123', 'author': {'username': 'user', 'userid': 'userid'}, 'url': 'test.com', 'date': 'today', 'origin': 'forum.com'}, 'title': 'title', 'comments': [{'content': 'text', 'metadata': {'uuid': '123', 'author': {'username': 'user', 'userid': 'userid'}, 'url': 'test.com', 'date': 'today', 'origin': 'forum.com'}, 'comments': None}]}
+    expected = {'content': 'text', 'metadata': {'uuid': '123', 'author': {'username': 'user', 'userid': 'userid'}, 'url': 'test.com', 'date': 'today', 'origin': 'forum.com', 'date_accessed': 'right now'}, 'title': 'title', 'comments': [{'content': 'text', 'metadata': {'uuid': '123', 'author': {'username': 'user', 'userid': 'userid'}, 'url': 'test.com', 'date': 'today', 'origin': 'forum.com', 'date_accessed': 'right now'}, 'comments': None}]}
     data = json.loads(adapter.dump_json(p))
     assert expected == data
 
@@ -85,13 +87,13 @@ def test_post():
 #tests if posts work if there are no comments
 def test_post_nocomments():
     a = Author(test_var['username'], test_var['userid'])
-    m = Metadata(uuid=test_var['uuid'], author=a, url=test_var['url'], date=test_var['date'], origin=test_var['origin'])
+    m = Metadata(uuid=test_var['uuid'], author=a, url=test_var['url'], date=test_var['date'], origin=test_var['origin'], date_accessed=test_var['date_accessed'])
     p = Post(test_var['content'], m, test_var['title'], None)
 
     adapter = TypeAdapter(Post)
 
     # test serialization
-    expected = {'content': 'text', 'metadata': {'uuid': '123', 'author': {'username': 'user', 'userid': 'userid'}, 'url': 'test.com', 'date': 'today', 'origin': 'forum.com'}, 'title': 'title', 'comments': None}
+    expected = {'content': 'text', 'metadata': {'uuid': '123', 'author': {'username': 'user', 'userid': 'userid'}, 'url': 'test.com', 'date': 'today', 'origin': 'forum.com', 'date_accessed': 'right now'}, 'title': 'title', 'comments': None}
     data = json.loads(adapter.dump_json(p))
     assert expected == data
 
@@ -105,7 +107,7 @@ def test_post_nocomments():
 def test_embedded_post():
     author_dict = {'username':'username', 'userid':'userid'}
     author = Author(**author_dict)
-    metadata_dict = {'uuid':'test', 'author':author, 'url':'test.com', 'date':'date', 'origin':'origin.com'}
+    metadata_dict = {'uuid':'test', 'author':author, 'url':'test.com', 'date':'date', 'origin':'origin.com', 'date_accessed':'right now'}
     metadata = Metadata(**metadata_dict)
     narr = np.array([1,2,3])
     comment = EmbeddedComment(metadata=metadata, embedded_content=[narr], embedded_comments=None)
@@ -115,7 +117,7 @@ def test_embedded_post():
     adapter = TypeAdapter(EmbeddedPost)
 
     # test serialization
-    expected = {'metadata': {'uuid': 'test', 'author': {'username': 'username', 'userid': 'userid'}, 'url': 'test.com', 'date': 'date', 'origin': 'origin.com'}, 'embedded_content': [[1, 2, 3]], 'embedded_title': [[1, 2, 3]], 'embedded_comments': [{'metadata': {'uuid': 'test', 'author': {'username': 'username', 'userid': 'userid'}, 'url': 'test.com', 'date': 'date', 'origin': 'origin.com'}, 'embedded_content': [[1, 2, 3]], 'embedded_comments': [{'metadata': {'uuid': 'test', 'author': {'username': 'username', 'userid': 'userid'}, 'url': 'test.com', 'date': 'date', 'origin': 'origin.com'}, 'embedded_content': [[1, 2, 3]], 'embedded_comments': None}]}]}
+    expected = {'metadata': {'uuid': 'test', 'author': {'username': 'username', 'userid': 'userid'}, 'url': 'test.com', 'date': 'date', 'origin': 'origin.com', 'date_accessed': 'right now'}, 'embedded_content': [[1, 2, 3]], 'embedded_title': [[1, 2, 3]], 'embedded_comments': [{'metadata': {'uuid': 'test', 'author': {'username': 'username', 'userid': 'userid'}, 'url': 'test.com', 'date': 'date', 'origin': 'origin.com', 'date_accessed': 'right now'}, 'embedded_content': [[1, 2, 3]], 'embedded_comments': [{'metadata': {'uuid': 'test', 'author': {'username': 'username', 'userid': 'userid'}, 'url': 'test.com', 'date': 'date', 'origin': 'origin.com', 'date_accessed': 'right now'}, 'embedded_content': [[1, 2, 3]], 'embedded_comments': None}]}]}
     data = adapter.dump_python(post)
     assert expected ==  data
     # save to file
@@ -130,7 +132,7 @@ def test_embedded_sentence():
     # set up embedded sentence object
     author_dict = {'username':'username', 'userid':'userid'}
     author = Author(**author_dict)
-    embedded_metadata_dict = {'uuid':'test', 'author':author, 'url':'test.com', 'date':'date', 'origin':'origin.com', 'type_text':'post', 'sentence_num':1, 'embedding_type': 'dense'}
+    embedded_metadata_dict = {'uuid':'test', 'author':author, 'url':'test.com', 'date':'date', 'origin':'origin.com', 'date_accessed':'right now', 'type_text':'post', 'sentence_num':1, 'embedding_type': 'dense'}
     embedded_metadata = EmbeddedMetadata(**embedded_metadata_dict)
     narr = np.array([1,2,3])
     embedded_sentence = EmbeddedSentence(embedded_metadata, narr)
@@ -139,7 +141,7 @@ def test_embedded_sentence():
     adapter = TypeAdapter(EmbeddedSentence)
 
     # test serialization
-    expected = {"metadata":{"uuid":"test","author":{"username":"username","userid":"userid"},"url":"test.com","date":"date","origin":"origin.com","type_text":"post","sentence_num":1,"embedding_type":"dense"},"embedded_text":[1,2,3]}
+    expected = {"metadata":{"uuid":"test","author":{"username":"username","userid":"userid"},"url":"test.com","date":"date","origin":"origin.com", "date_accessed":"right now","type_text":"post","sentence_num":1,"embedding_type":"dense"},"embedded_text":[1,2,3]}
     data = adapter.dump_python(embedded_sentence)
     assert data == expected
 

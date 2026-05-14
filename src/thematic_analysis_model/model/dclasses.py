@@ -19,6 +19,7 @@ class Metadata:
     url: str
     date: str
     origin: str
+    date_accessed: str
 
 # content abstract dataclass
 @dataclass

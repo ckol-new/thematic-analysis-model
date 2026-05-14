@@ -10,6 +10,7 @@ from pathlib import Path
 import uuid
 import re 
 import codecs
+from datetime import datetime
 
 # UTILITY functions
 # seed generator utility helps speed up process of generating seeds, which act as start nodes for the crawler to branch out from.
@@ -140,7 +141,9 @@ class ScrapingPipeline(ABC):
 
         #   get date
         date = self.scrape_date(soup)
-
+        # get date accessed
+        now = datetime.now()
+        date_accessed = now.strftime("%Y-%m-%d %H:%M:%S")
 
         #   get author 
         #       get user name
@@ -153,7 +156,7 @@ class ScrapingPipeline(ABC):
 
         # create objects, must package comments inside post object
         author = Author(username, userid)
-        metadata = Metadata(my_uuid, author, url, date, self.forum_origin)
+        metadata = Metadata(my_uuid, author, url, date, self.forum_origin, str(date_accessed))
         post = Post(content, metadata, title, comments)
 
         return post
@@ -336,11 +339,12 @@ class ALZConnectedScrapingPipeline(ScrapingPipeline):
         # get comment data
         content = self.scrape_comment_content(soup)
         date = self.scrape_comment_date(soup)
+        date_accessed = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         username = self.scrape_comment_author_username(soup)
         userid = self.scrape_comment_author_userid(soup)
         author = Author(username, userid)
         my_uuid = str(uuid.uuid4())
-        metadata = Metadata(my_uuid, author, url, date, forum_origin)
+        metadata = Metadata(my_uuid, author, url, date, forum_origin, date_accessed)
         #TODO figure out how to handle sub-comments of comments
         comment = Comment(content, metadata, None) 
 
