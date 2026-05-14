@@ -43,16 +43,15 @@ class EmbeddingPipeline:
 
         # while there is item in queue
         while len(queue) is not 0:
+            print(len(queue))
             current = queue.pop()
 
             # check if has comments: add to queue
-            if not hasattr(current, 'comments'):
-                continue
-            if len(current.comments) == 0:
-                continue
-            
-            # add comments to queue: list concat
-            queue = queue + current.comments
+            if hasattr(current, 'comments'):
+                print('has attr')
+                if current.comments: 
+                    print('adding comments')
+                    queue = queue + current.comments
 
             # embed content of current content being checked
             embeddings = embeddings + self.embed_content(current)
@@ -75,7 +74,7 @@ class EmbeddingPipeline:
         count = 0
         for sentence in sentences:
             count += 1
-            embedded_metadata = EmbeddedMetadata(metadata.uuid, metadata.author, metadata.url, metadata.date, metadata.origin, metadata.date_accessed, text_type, count)
+            embedded_metadata = EmbeddedMetadata(metadata.uuid, metadata.author, metadata.url, metadata.date, metadata.origin, metadata.date_accessed, text_type, count, self.embedding_type)
             embedded_sentence = self.embed_sentence(sentence, embedded_metadata)
             embeddings.append(embedded_sentence)
 
@@ -95,11 +94,17 @@ class EmbeddingPipeline:
     # save embeddings
     def save_embeddings(self, embeddings, location: Path | str):
         adapter = TypeAdapter(EmbeddedSentence)
-        smart_save(location, [adapter.dump_json(embedding) for embedding in embeddings], 'jsonl')
+        smart_save(location, [adapter.dump_json(embedding).decode() for embedding in embeddings], 'jsonl')
 
     # load embeddings class method
     @classmethod
-    def load_embeddings(cls, location: Path | str):
-        ...
+    def load_embeddings(cls, location: Path | str) -> list[EmbeddedSentence]:
+        adapter = TypeAdapter(EmbeddedSentence)
+        embedding_list: list = smart_load(location)
+        embeddings: list[EmbeddedSentence] = []
+        for embedding_data in embedding_list:
+            embedding = adapter.validate_json(embedding_data)
+            embeddings.append(embedding)
 
+        return embeddings
     
