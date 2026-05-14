@@ -24,6 +24,27 @@ class EmbeddingPipeline:
         # save embeddedings to new file.
         ...
 
+    def embed_content(self, content: Content):
+        text = content.content
+        metadata = content.metadata
+        if type(content) == Post: text_type = 'post'
+        elif type(content) == Comment: text_type = 'comment'
+        else: text_type = 'unknown'
+
+        # split text
+        sentences: list[str] = self.split_text(text)
+
+        # emebd sentences
+        embeddings = []
+        count = 0
+        for sentence in sentences:
+            count += 1
+            embedded_metadata = EmbeddedMetadata(metadata.uuid, metadata.author, metadata.url, metadata.date, metadata.origin, text_type, count)
+            embedded_sentence = self.embed_sentence(sentence, embedded_metadata)
+            embeddings.append(embedded_sentence)
+
+        return embeddings
+
 
     # split text into sentence by newline character
     def split_text(self, text: str) -> list[str]:
@@ -31,9 +52,10 @@ class EmbeddingPipeline:
         return sentences
 
     # embed sentence
-    def embed_sentence(self, sentence: str) -> np.ndarray:
+    def embed_sentence(self, sentence: str, metadata: EmbeddedMetadata) -> EmbeddedSentence:
         embedding: np.ndarray = self.model.encode(sentence)
-        return embedding
+        embedded_sentence = EmbeddedSentence(metadata, embedding)
+        return embedded_sentence
 
     # save embeddings
     def save_embeddings(self, embeddings, location: Path | str):
