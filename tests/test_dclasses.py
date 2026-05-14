@@ -69,14 +69,15 @@ def test_metadata():
 def test_post():
     a = Author(test_var['username'], test_var['userid'])
     m = Metadata(uuid=test_var['uuid'], author=a, url=test_var['url'], date=test_var['date'], origin=test_var['origin'], date_accessed=test_var['date_accessed'])
-    c = Comment(test_var['content'], m, None)
-    p = Post(test_var['content'], m, test_var['title'], [c])
+    c = Comment(m, test_var['content'], None)
+    p = Post(m, test_var['content'], test_var['title'], [c])
 
     adapter = TypeAdapter(Post)
 
     # test serialization
-    expected = {'content': 'text', 'metadata': {'uuid': '123', 'author': {'username': 'user', 'userid': 'userid'}, 'url': 'test.com', 'date': 'today', 'origin': 'forum.com', 'date_accessed': 'right now'}, 'title': 'title', 'comments': [{'content': 'text', 'metadata': {'uuid': '123', 'author': {'username': 'user', 'userid': 'userid'}, 'url': 'test.com', 'date': 'today', 'origin': 'forum.com', 'date_accessed': 'right now'}, 'comments': None}]}
+    expected = {'metadata': {'uuid': '123', 'author': {'username': 'user', 'userid': 'userid'}, 'url': 'test.com', 'date': 'today', 'origin': 'forum.com', 'date_accessed': 'right now'}, 'content': 'text', 'title': 'title', 'comments': [{'metadata': {'uuid': '123', 'author': {'username': 'user', 'userid': 'userid'}, 'url': 'test.com', 'date': 'today', 'origin': 'forum.com', 'date_accessed': 'right now'}, 'content': 'text', 'comments': None}]}
     data = json.loads(adapter.dump_json(p))
+    print(data)
     assert expected == data
 
     # test deserialization
@@ -88,12 +89,12 @@ def test_post():
 def test_post_nocomments():
     a = Author(test_var['username'], test_var['userid'])
     m = Metadata(uuid=test_var['uuid'], author=a, url=test_var['url'], date=test_var['date'], origin=test_var['origin'], date_accessed=test_var['date_accessed'])
-    p = Post(test_var['content'], m, test_var['title'], None)
+    p = Post(m, test_var['content'], test_var['title'], None)
 
     adapter = TypeAdapter(Post)
 
     # test serialization
-    expected = {'content': 'text', 'metadata': {'uuid': '123', 'author': {'username': 'user', 'userid': 'userid'}, 'url': 'test.com', 'date': 'today', 'origin': 'forum.com', 'date_accessed': 'right now'}, 'title': 'title', 'comments': None}
+    expected = {'metadata': {'uuid': '123', 'author': {'username': 'user', 'userid': 'userid'}, 'url': 'test.com', 'date': 'today', 'origin': 'forum.com', 'date_accessed': 'right now'}, 'content': 'text', 'title': 'title', 'comments': None}
     data = json.loads(adapter.dump_json(p))
     assert expected == data
 
@@ -101,7 +102,6 @@ def test_post_nocomments():
     input_json = adapter.dump_json(p).decode()
     p2 = adapter.validate_json(input_json)
     assert p == p2
-
 
 # test embedded post serialization, and deserialization, nested objects as well
 def test_embedded_post():

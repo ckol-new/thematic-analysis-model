@@ -160,7 +160,7 @@ class ScrapingPipeline(ABC):
         # create objects, must package comments inside post object
         author = Author(username, userid)
         metadata = Metadata(my_uuid, author, url, date, self.forum_origin, str(date_accessed))
-        post = Post(content, metadata, title, comments)
+        post = Post(metadata, content, title, comments)
 
         return post
 
@@ -349,7 +349,7 @@ class ALZConnectedScrapingPipeline(ScrapingPipeline):
         my_uuid = str(uuid.uuid4())
         metadata = Metadata(my_uuid, author, url, date, forum_origin, date_accessed)
         #TODO figure out how to handle sub-comments of comments
-        comment = Comment(content, metadata) 
+        comment = Comment(metadata, content) 
 
         # validate comment
         if not self.validate_comment(comment): return None

@@ -25,8 +25,8 @@ class Metadata:
 # content abstract dataclass
 @dataclass
 class Content(ABC):
-    content: str
     metadata: Metadata
+    content: str
 
 # comment dataclass
 @dataclass
