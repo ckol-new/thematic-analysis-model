@@ -97,4 +97,7 @@ def pool_jsonl(files: list[Path | str], pooled_data_location: Path | str):
     smart_save(pooled_data_location, data_pool, 'jsonl')
 
 
-    
+def line_count(file: Path | str) -> int:
+    with file.open('r', encoding='utf-8') as f:
+        line_count = sum(1 for line in f)
+    return line_count

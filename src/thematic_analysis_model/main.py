@@ -46,7 +46,10 @@ def pool():
 
 
 def main():
-    pool()
+    scraped_pooled_location = save_base / 'scrape_output' / 'scraped_pooled_test1.jsonl'
+    embedding_pooled_location = save_base / 'embedding_output' / 'embedded_pooled_test1.jsonl'
+    print(line_count(scraped_pooled_location))
+    print(line_count(embedding_pooled_location))
 
 if __name__ == '__main__':
     main()
