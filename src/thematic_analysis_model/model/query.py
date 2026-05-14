@@ -35,10 +35,10 @@ class QueryEngine:
         # for each embedding, get cosine similarity
         for embedding in self.embedded_db:
             similarity = self.cosine_similarity(embedded_query, embedding.embedded_text)
-            query_pair.append((embedding.metadata.uuid, similarity))
+            query_pair.append((embedding, similarity))
 
         # sort query pair
-        query_pair.sort(key=lambda x: x[1])
+        query_pair.sort(key=lambda x: x[1], reverse=True)
         # only take highest top_n similarities
         del query_pair[self.top_n:]
 
@@ -60,7 +60,7 @@ class QueryEngine:
     @classmethod
     def get_result_objects(cls, query_pair: dict, *data_locations):
         # get set of uuid
-        target = set([key for key in query_pair.keys()])
+        target = set([key.metadata.uuid for key in query_pair.keys()])
 
         # added post objects to list, look for uuid matches, only keep matches
         scraped_db = []
@@ -81,7 +81,9 @@ class QueryEngine:
 
         display_results = []
         for match in matches:
-            display_results.append((match, query_pair[match.metadata.uuid]))
+            for embedded_sentence in query_pair:
+                if match.metadata.uuid == embedded_sentence.metadata.uuid:
+                    display_results.append((match, embedded_sentence.sentence, query_pair[embedded_sentence]))
 
         return display_results
 

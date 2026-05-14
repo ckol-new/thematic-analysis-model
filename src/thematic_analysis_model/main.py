@@ -46,17 +46,17 @@ def pool():
     pool_jsonl(embed_files, embedding_pooled_location)
 
 def query():
-    query = 'I hate doctors so much.'
+    query = 'I am angry at my parent'
     model = embedding_config['model']
 
-    embedding_pooled_location = save_base / 'embedding_output' / 'embedded_pooled_test1.jsonl'
-    scraped_pooled_location = save_base / 'scrape_output' / 'scraped_pooled_test1.jsonl'
+    embedding_1_location = save_base / 'embedding_output' / 'embeddings_alzconnected_livingwdementia_save1.jsonl'
+    scraped_1_location= save_base / 'scrape_output' / 'scrape_alzconnected_livingwdementia_save1.jsonl'
     
-    query_engine = QueryEngine(model, embedding_pooled_location)
+    query_engine = QueryEngine(model, embedding_1_location)
     result_dict = query_engine.run_query(query)
-    result_decoded = QueryEngine.get_result_objects(result_dict, scraped_pooled_location)
-    for key, val in result_decoded:
-        print(key.content, " : ", val)
+    result_decoded = QueryEngine.get_result_objects(result_dict, scraped_1_location)
+    for post, sentence, similarity in result_decoded:
+        print('uuid: ', post.metadata.uuid, ' sentence: ', sentence, ' similarity: ', similarity)
 
 
 

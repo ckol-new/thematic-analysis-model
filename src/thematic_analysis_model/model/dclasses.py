@@ -7,13 +7,13 @@ from typing import Optional
 
 
 # author dataclass
-@dataclass
+@dataclass(config=ConfigDict(frozen=True))
 class Author:
     username: str
     userid: str
 
 # metadata dataclass
-@dataclass
+@dataclass(config=ConfigDict(frozen=True))
 class Metadata:
     uuid: str
     author: Author
@@ -109,7 +109,7 @@ class EmbeddedPost(EmbeddedContent):
         return True
 
 # embedded metadata is a custom metadataclass that has some extra things
-@dataclass 
+@dataclass(config=ConfigDict(frozen=True))
 class EmbeddedMetadata(Metadata):
     type_text: str
     sentence_num: int
@@ -117,7 +117,7 @@ class EmbeddedMetadata(Metadata):
 
 # class EmbeddedSentence() is an embedding for an indiviudal sentence, not packaged into a Post/Comment object
 # this will most likely what i use
-@dataclass(config=ConfigDict(arbitrary_types_allowed=True))
+@dataclass(config=ConfigDict(arbitrary_types_allowed=True, frozen=True))
 class EmbeddedSentence():
     metadata: EmbeddedMetadata
     sentence: str
@@ -129,6 +129,9 @@ class EmbeddedSentence():
         if self.sentence != other.sentence: return False
         if not np.array_equal(self.embedded_text, other.embedded_text): return False
         return True
+
+    def __hash__(self):
+        return hash((self.metadata, self.sentence))
 
 # efficient embedded sentence, that lowers ram usage
 @dataclass(config=ConfigDict(arbitrary_types_allowed=True))
