@@ -3,6 +3,7 @@ from thematic_analysis_model.model.scraping_pipeline import ScrapingPipeline
 from thematic_analysis_model.model.dclasses import *
 from abc import ABC, abstractmethod
 from pathlib import Path
+from sentence_transformers import SentenceTransformer, util
 
 # initialize with model you want to embed
 class EmbeddingPipeline:

@@ -7,6 +7,7 @@ from pydantic import TypeAdapter
 import pytest
 import json
 import numpy as np
+from sentence_transformers import SentenceTransformer
 
 test_var = {
     'uuid': '123',
@@ -126,7 +127,6 @@ def test_embedded_post():
     assert post == post_loaded
 
 
-test_embedded_post()
-    
+
 
 
