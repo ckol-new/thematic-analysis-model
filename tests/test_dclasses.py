@@ -130,7 +130,7 @@ def test_embedded_sentence():
     # set up embedded sentence object
     author_dict = {'username':'username', 'userid':'userid'}
     author = Author(**author_dict)
-    embedded_metadata_dict = {'uuid':'test', 'author':author, 'url':'test.com', 'date':'date', 'origin':'origin.com', 'type':'post', 'sentence_num':1}
+    embedded_metadata_dict = {'uuid':'test', 'author':author, 'url':'test.com', 'date':'date', 'origin':'origin.com', 'type_text':'post', 'sentence_num':1, 'embedding_type': 'dense'}
     embedded_metadata = EmbeddedMetadata(**embedded_metadata_dict)
     narr = np.array([1,2,3])
     embedded_sentence = EmbeddedSentence(embedded_metadata, narr)
@@ -139,7 +139,7 @@ def test_embedded_sentence():
     adapter = TypeAdapter(EmbeddedSentence)
 
     # test serialization
-    expected = {"metadata":{"uuid":"test","author":{"username":"username","userid":"userid"},"url":"test.com","date":"date","origin":"origin.com","type":"post","sentence_num":1},"embedded_text":[1,2,3]}
+    expected = {"metadata":{"uuid":"test","author":{"username":"username","userid":"userid"},"url":"test.com","date":"date","origin":"origin.com","type_text":"post","sentence_num":1,"embedding_type":"dense"},"embedded_text":[1,2,3]}
     data = adapter.dump_python(embedded_sentence)
     assert data == expected
 

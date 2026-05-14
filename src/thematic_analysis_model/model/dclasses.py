@@ -109,8 +109,9 @@ class EmbeddedPost(EmbeddedContent):
 # embedded metadata is a custom metadataclass that has some extra things
 @dataclass 
 class EmbeddedMetadata(Metadata):
-    type: str
+    type_text: str
     sentence_num: int
+    embedding_type: str
 
 # class EmbeddedSentence() is an embedding for an indiviudal sentence, not packaged into a Post/Comment object
 # this will most likely what i use
