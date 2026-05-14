@@ -19,5 +19,4 @@ def test_embedding_run_pipeline():
     embeddings_loaded = EmbeddingPipeline.load_embeddings(embeddings_path)
     assert embeddings == embeddings_loaded
 
-test_embedding_run_pipeline()
 

@@ -85,7 +85,7 @@ class EmbeddingPipeline:
     # embed sentence
     def embed_sentence(self, sentence: str, metadata: EmbeddedMetadata) -> EmbeddedSentence:
         embedding: np.ndarray = self.model.encode(sentence)
-        embedded_sentence = EmbeddedSentence(metadata, embedding)
+        embedded_sentence = EmbeddedSentence(metadata, sentence, embedding)
         return embedded_sentence
 
     # save embeddings

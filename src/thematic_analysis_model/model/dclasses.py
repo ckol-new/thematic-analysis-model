@@ -120,11 +120,13 @@ class EmbeddedMetadata(Metadata):
 @dataclass(config=ConfigDict(arbitrary_types_allowed=True))
 class EmbeddedSentence():
     metadata: EmbeddedMetadata
+    sentence: str
     embedded_text: CustomNpArray
 
     def __eq__(self, other):
         if not isinstance(other, EmbeddedSentence): return False
         if self.metadata != other.metadata: return False
+        if self.sentence != other.sentence: return False
         if not np.array_equal(self.embedded_text, other.embedded_text): return False
         return True
 
