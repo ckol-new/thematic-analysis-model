@@ -105,3 +105,17 @@ class EmbeddedPost(EmbeddedContent):
             elif t1 != t2: return False
         if self.embedded_comments != other.embedded_comments: return False
         return True
+
+# embedded metadata is a custom metadataclass that has some extra things
+@dataclass 
+class EmbeddedMetadata(Metadata):
+    type: str
+    sentence_num: int
+
+
+# class EmbeddedSentence() is an embedding for an indiviudal sentence, not packaged into a Post/Comment object
+# this will most likely what i use
+@dataclass
+class EmbeddedSentence():
+    metadata: EmbeddedMetadata
+    embedded_text: CustomNpArray
