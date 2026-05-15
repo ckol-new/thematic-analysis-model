@@ -5,7 +5,6 @@ from thematic_analysis_model.model.util import *
 from thematic_analysis_model.model.query import QueryEngine
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
-
 from thematic_analysis_model.pipeline_config.alzconnected import *
 
 def pipelinex():
@@ -66,11 +65,11 @@ def pipeline2():
     except: ...
 
 def query():
-    query = 'Paranoid of family members'
+    query = 'I hate my family soo much'
     model = common_data['model']
 
-    embedding_pooled_location = save_base / 'embedding_output' / 'embedded_pooled_test1.jsonl'
-    scraped_pooled_location = save_base / 'scrape_output' / 'scraped_pooled_test1.jsonl'
+    embedding_pooled_location = common_data['embedding_output_base'] / 'embeddings_pooled.jsonl'
+    scraped_pooled_location = common_data['scrape_output_base'] / 'scraped_pooled.jsonl'
     
     query_engine = QueryEngine(model, embedding_pooled_location)
     result_dict = query_engine.run_query(query)
@@ -81,7 +80,8 @@ def query():
 
 
 def main():
-    
+    query()
+
 
 if __name__ == '__main__':
     main()
