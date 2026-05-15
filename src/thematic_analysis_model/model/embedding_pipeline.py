@@ -24,7 +24,12 @@ class EmbeddingPipeline:
         # this involves recursive embedding of comments, and comments of comments. Depth first.
         # to save memory, clear post data from memory
         embeddings = []
+        total = len(posts)
+        count = 0
         for post in posts:
+            count += 1
+            if count % 10 == 0: 
+                print(f'% {100*(count/total)} finished')
             embeddings = embeddings + self.traverse_content(post)
 
         # save embeddedings to new file.

@@ -6,62 +6,68 @@ from thematic_analysis_model.model.query import QueryEngine
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
 
-seeds = None # for now
-seed_earlyonset = generate_seeds(base='https://alzconnected.org/categories/i-have-younger-onset-alzheimers/p', start=1, stop=10, end_seq="")
-save_base = Path.cwd() / 'data'
+from thematic_analysis_model.pipeline_config.alzconnected import *
 
-scraping_config = {
-    'seeds': seeds,
-    'crawl_save_location': save_base / 'crawl_output' / 'crawl_alzconnected_livingwdementia_save1.txt',
-    'scrape_save_location': save_base / 'scrape_output' / 'scrape_alzconnected_livingwdementia_save1.jsonl',
-    'forum_origin': 'alzconnected'
-}
-embedding_config = {
-    'data_location': save_base / 'scrape_output' / 'scrape_alzconnected_livingwdementia_save1.jsonl',
-    'save_embeddings_location': save_base / 'embedding_output' / 'embeddings_alzconnected_livingwdementia_save1.jsonl',
-    'model': SentenceTransformer('all-MiniLM-L6-v2'),
-    'embedding_type': 'all-MiniLM-L6-v2'
-}
+def pipelinex():
+    s_pipeline = ALZConnectedScrapingPipeline(**caregiver_general_scraper1_50)
+    e_pipeline = EmbeddingPipeline(**caregiver_general_embedder1_50)
+    s_pipeline.run_pipeline()
+    e_pipeline.run_pipeline()
 
-scraping_config2 = {
-    'seeds': seed_earlyonset,
-    'crawl_save_location': save_base / 'crawl_output' / 'crawl_alzconnected_earlyonset_save1.txt',
-    'scrape_save_location': save_base / 'scrape_output' / 'scrape_alzconnected_earlyonset_save1.jsonl',
-    'forum_origin': 'alzconnected'
-}
-embedding_config2 = {
-    'data_location': save_base / 'scrape_output' / 'scrape_alzconnected_earlyonset_save1.jsonl',
-    'save_embeddings_location': save_base / 'embedding_output' / 'embeddings_alzconnected_earlyonset_save1.jsonl',
-    'model': SentenceTransformer('all-MiniLM-L6-v2'),
-    'embedding_type': 'all-MiniLM-L6-v2'
-}
+def pipeline1():
+    # scrape 1-50
+    print("STARTING 1-50")
+    try: 
+        s_pipeline = ALZConnectedScrapingPipeline(**caregiver_general_scraper1_50)
+        e_pipeline = EmbeddingPipeline(**caregiver_general_embedder1_50)
+    except: ...
+    try: s_pipeline.run_pipeline()
+    except Exception as e: 
+        print(f'Cannot run scraping pipeline {e}')
+        raise Exception(e)
+    try: e_pipeline.run_pipeline()
+    except Exception as e: 
+        print(f'Cannot run embedding pipeline {e}')
+        raise Exception(e)
 
-def pipeline_run():
-    scrape_pipeline = ALZConnectedScrapingPipeline(**scraping_config2)
-    embedding_pipeline = EmbeddingPipeline(**embedding_config2)
+    print("SCRAPING 51-100")
+    # scrape 51-100
+    try: 
+        s_pipeline = ALZConnectedScrapingPipeline(**caregiver_general_scraper51_100)
+        e_pipeline = EmbeddingPipeline(**caregiver_general_embedder51_100)
+    except: ...
+    try: s_pipeline.run_pipeline()
+    except: ...
+    try: e_pipeline.run_pipeline()
+    except: ...
 
-    scrape_pipeline.run_pipeline()
-    embedding_pipeline.run_pipeline()
 
-def pool():
-    embedding_1_location = save_base / 'embedding_output' / 'embeddings_alzconnected_livingwdementia_save1.jsonl'
-    embedding_2_location = save_base / 'embedding_output' / 'embeddings_alzconnected_earlyonset_save1.jsonl'
-
-    scraped_1_location= save_base / 'scrape_output' / 'scrape_alzconnected_livingwdementia_save1.jsonl'
-    scraped_2_location= save_base / 'scrape_output' / 'scrape_alzconnected_earlyonset_save1.jsonl'
-
-    embedding_pooled_location = save_base / 'embedding_output' / 'embedded_pooled_test1.jsonl'
-    scraped_pooled_location = save_base / 'scrape_output' / 'scraped_pooled_test1.jsonl'
-
-    scrape_files = [scraped_1_location, scraped_2_location]
-    embed_files = [embedding_1_location, embedding_2_location]
-
-    pool_jsonl(scrape_files, scraped_pooled_location)
-    pool_jsonl(embed_files, embedding_pooled_location)
+def pipeline2():
+    print("SCRAPING 101-150")
+    # scrape 101-150
+    try: 
+        s_pipeline = ALZConnectedScrapingPipeline(**caregiver_general_scraper101_150)
+        e_pipeline = EmbeddingPipeline(**caregiver_general_embedder101_150)
+    except: ...
+    try: s_pipeline.run_pipeline()
+    except: ...
+    try: e_pipeline.run_pipeline()
+    except: ...
+    
+    print("SCRAPING 151-192")
+    # scrape 151-192
+    try: 
+        s_pipeline = ALZConnectedScrapingPipeline(**caregiver_general_scraper151_192)
+        e_pipeline = EmbeddingPipeline(**caregiver_general_embedder151_192)
+    except: ...
+    try: s_pipeline.run_pipeline()
+    except: ...
+    try: e_pipeline.run_pipeline()
+    except: ...
 
 def query():
     query = 'Paranoid of family members'
-    model = embedding_config['model']
+    model = common_data['model']
 
     embedding_pooled_location = save_base / 'embedding_output' / 'embedded_pooled_test1.jsonl'
     scraped_pooled_location = save_base / 'scrape_output' / 'scraped_pooled_test1.jsonl'
@@ -75,7 +81,7 @@ def query():
 
 
 def main():
-    query()
+    
 
 if __name__ == '__main__':
     main()

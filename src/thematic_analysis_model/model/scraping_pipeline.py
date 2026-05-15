@@ -47,7 +47,7 @@ def request_page(url: str, header: dict = None) -> str:
         response = requests.get(url, headers=header)
         if response.status_code == 200:
             ...
-        else: print('REQUEST FAILED: ', response.status_code)
+        else: print(f'REQUEST FAILED for {url}: ', response.status_code)
 
         html_text = response.text
         response.close() # close connection to server I think
@@ -71,12 +71,14 @@ class ScrapingPipeline(ABC):
     # run pipeline method
     def run_pipeline(self):
         # run crawler
+        print('RUNNING CRAWLER')
         self.crawl_output = self.run_crawler()
 
         # optionally save scrape output
         if self.crawl_save_location: 
             self.save_crawl_output()
 
+        print("RUNNING SCRAPER")
         # run scraper
         self.scrape_output = self.run_scraper()
 
@@ -111,7 +113,12 @@ class ScrapingPipeline(ABC):
     # run scraper method acts as 'queue', running many scraping operations for every link in the crawl output
     def run_scraper(self) -> list[Post] | None:
         scrape_output = []
+        count = 0
+        total = len(self.crawl_output)
         for crawl_seed in self.crawl_output:
+            count += 1
+            if count % 10 == 0:
+                print(f'% {100*(count / total)} finished')
             try:
                 scraped_post: Post = self.scrape(crawl_seed)
             except Exception as e:
