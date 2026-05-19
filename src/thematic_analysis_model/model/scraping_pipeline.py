@@ -61,3 +61,31 @@ class ScrapingPipeline(ABC):
                 break
             
         return text 
+
+     # method validates post returning true if valid, false if not
+    @classmethod
+    def validate_post(self, post: Post) -> bool:
+        # check post length (minimum characters)
+        # check post title
+        # check post meta data (*must have url, date, author?)
+        #TODO implement duplicate checking
+
+        if len(post.content) < 30: return False
+        if not post.title: return False
+        if not post.metadata.url: return False
+        if not post.metadata.date: return False
+        if not post.metadata.uuid: return False
+        if not post.metadata.date_accessed: return False
+
+        return True
+
+    # validate comment method
+    @classmethod
+    def validate_comment(self, comment: Comment) -> bool:
+        if len(comment.content) < 30: return False
+        if not comment.metadata.url: return False
+        if not comment.metadata.date: return False
+        if not comment.metadata.uuid: return False
+        if not comment.metadata.date_accessed: return False
+
+        return True

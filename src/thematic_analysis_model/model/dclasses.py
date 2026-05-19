@@ -7,13 +7,13 @@ from typing import Optional
 
 
 # author dataclass
-@dataclass(config=ConfigDict(frozen=True))
+@dataclass(config=ConfigDict())
 class Author:
     username: str
     userid: str
 
 # metadata dataclass
-@dataclass(config=ConfigDict(frozen=True))
+@dataclass(config=ConfigDict())
 class Metadata:
     uuid: str
     author: Author

@@ -1,4 +1,7 @@
 from thematic_analysis_model.model.scraping_pipeline import *
+import pytest
+import copy
+
 
 # test seed generator
 def test_generate_seeds():
@@ -39,3 +42,54 @@ def test_save_load_seeds():
     loaded_seeds = ScrapingPipeline.load_seeds(fpath)
 
     assert loaded_seeds == seeds
+
+def test_post_validation():
+    a = Author('username', '123')
+    m = Metadata('really unique', a, 'test.com', 'today', 'forum', 'today')
+    p = Post(m, 'content', 'title', None)
+
+    invalid1 = copy.deepcopy(p)
+    invalid2 = copy.deepcopy(p)
+    invalid3 = copy.deepcopy(p)
+    invalid4 = copy.deepcopy(p)
+    invalid5 = copy.deepcopy(p)
+    invalid6 = copy.deepcopy(p)
+
+    invalid1.title = ""
+    invalid2.content = 'too short'
+    invalid3.metadata.url = ''
+    invalid4.metadata.date = ''
+    invalid5.metadata.uuid = ''
+    invalid6.metadata.date_accessed = ''
+
+    assert ScrapingPipeline.validate_post(invalid1) == False
+    assert ScrapingPipeline.validate_post(invalid2) == False
+    assert ScrapingPipeline.validate_post(invalid3) == False
+    assert ScrapingPipeline.validate_post(invalid4) == False
+    assert ScrapingPipeline.validate_post(invalid5) == False
+    assert ScrapingPipeline.validate_post(invalid6) == False
+
+def test_comment_validation():
+    a = Author('username', '123')
+    m = Metadata('really unique', a, 'test.com', 'today', 'forum', 'today')
+    c = Comment(m, 'content', None)
+
+    invalid1 = copy.deepcopy(c)
+    invalid2 = copy.deepcopy(c)
+    invalid3 = copy.deepcopy(c)
+    invalid4 = copy.deepcopy(c)
+    invalid5 = copy.deepcopy(c)
+
+    invalid1.content = 'too short'
+    invalid2.metadata.url = ''
+    invalid3.metadata.date = ''
+    invalid4.metadata.uuid = ''
+    invalid5.metadata.date_accessed = ''
+
+    assert ScrapingPipeline.validate_post(invalid1) == False
+    assert ScrapingPipeline.validate_post(invalid2) == False
+    assert ScrapingPipeline.validate_post(invalid3) == False
+    assert ScrapingPipeline.validate_post(invalid4) == False
+    assert ScrapingPipeline.validate_post(invalid5) == False
+
+
