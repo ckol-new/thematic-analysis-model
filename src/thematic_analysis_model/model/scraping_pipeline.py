@@ -33,4 +33,11 @@ class ScrapingPipeline(ABC):
     def load_crawl_output(cls, fpath) -> list[str]:
         return load_text(fpath)
 
+    # file i/o for scrape output
+    def save_scrape_output(cls, scrape_output: list[Post], fpath: Path):
+        save_dclasses(file_path=fpath, cls=Post, dclasses=scrape_output)
+    # NOT MEMORY EFFICIENT
+    @classmethod
+    def load_scrape_output(cls, fpath: Path) -> list[Post]:
+        return load_dclasses(file_path=fpath, cls=Post)
     
