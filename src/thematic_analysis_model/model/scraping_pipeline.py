@@ -1,6 +1,7 @@
 from thematic_analysis_model.model.dclasses import *
 from thematic_analysis_model.model.util import *
 from abc import ABC, abstractmethod
+import codecs
 
 # UTILITY functions
 # seed generator utility helps speed up process of generating seeds, which act as start nodes for the crawler to branch out from.
@@ -41,3 +42,22 @@ class ScrapingPipeline(ABC):
     def load_scrape_output(cls, fpath: Path) -> list[Post]:
         return load_dclasses(file_path=fpath, cls=Post)
     
+    # method for processing text, and removing escape characterws
+     # pre-process text
+    @classmethod
+    def process_text(cls, text):
+        if not text:
+            return None
+        
+        # two step decoding for double escape
+        try:
+            text = codecs.decode(text, 'unicode-escape') 
+        except:
+            pass
+        for i in range(2):
+            try:
+                text = text.encode('latin-1').decode('utf-8')
+            except (UnicodeEncodeError, UnicodeDecodeError):
+                break
+            
+        return text 
