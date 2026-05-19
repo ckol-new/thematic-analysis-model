@@ -25,5 +25,12 @@ class ScrapingPipeline(ABC):
     def load_seeds(cls, fpath: Path) -> list[str]:
         return load_text(fpath)
 
-    # file i/o for 
+    # file i/o for crawl output
+    @classmethod
+    def save_crawl_output(cls, crawl_output: list[str], fpath: Path):
+        save_text(fpath=fpath, arr=crawl_output)
+    @classmethod
+    def load_crawl_output(cls, fpath) -> list[str]:
+        return load_text(fpath)
+
     
