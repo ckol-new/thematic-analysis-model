@@ -17,8 +17,8 @@ def pipeline1():
     # scrape 1-50
     print("STARTING 1-50")
     try: 
-        s_pipeline = ALZConnectedScrapingPipeline(**caregiver_general_scraper1_50)
-        e_pipeline = EmbeddingPipeline(**caregiver_general_embedder1_50)
+        s_pipeline = ALZConnectedScrapingPipeline(**caregiver_partner_scraper1_50)
+        e_pipeline = EmbeddingPipeline(**caregiver_partner_embedder1_50)
     except: ...
     try: s_pipeline.run_pipeline()
     except Exception as e: 
@@ -32,8 +32,8 @@ def pipeline1():
     print("SCRAPING 51-100")
     # scrape 51-100
     try: 
-        s_pipeline = ALZConnectedScrapingPipeline(**caregiver_general_scraper51_100)
-        e_pipeline = EmbeddingPipeline(**caregiver_general_embedder51_100)
+        s_pipeline = ALZConnectedScrapingPipeline(**caregiver_partner_scraper51_100)
+        e_pipeline = EmbeddingPipeline(**caregiver_partner_embedder51_100)
     except: ...
     try: s_pipeline.run_pipeline()
     except: ...
@@ -57,30 +57,27 @@ def pipeline2():
     # scrape 151-192
     try: 
         s_pipeline = ALZConnectedScrapingPipeline(**caregiver_general_scraper151_192)
-        e_pipeline = EmbeddingPipeline(**caregiver_general_embedder151_192)
+        e_pipeline = EmbeddingPipeline(**caregiver_general_embedder151_192) 
     except: ...
     try: s_pipeline.run_pipeline()
     except: ...
     try: e_pipeline.run_pipeline()
     except: ...
 
-def query():
-    query = 'I hate my family soo much'
+def query(q: str):
     model = common_data['model']
 
-    embedding_pooled_location = common_data['embedding_output_base'] / 'embeddings_pooled.jsonl'
-    scraped_pooled_location = common_data['scrape_output_base'] / 'scraped_pooled.jsonl'
+    embedding_pooled_location = common_data['embedding_output_base'] / 'embeddings_alzconnected_caregivergeneral_1_50_save1.jsonl'
+    scraped_pooled_location = common_data['scrape_output_base'] / 'scrape_alzconnected_caregivergeneral_1_50_save1.jsonl'
     
     query_engine = QueryEngine(model, embedding_pooled_location)
-    result_dict = query_engine.run_query(query)
+    result_dict = query_engine.run_query(q)
     result_decoded = QueryEngine.get_result_objects(result_dict, scraped_pooled_location)
     for post, sentence, similarity in result_decoded:
         print('uuid: ', post.metadata.uuid, ' sentence: ', sentence, ' similarity: ', similarity)
 
-
-
 def main():
-    query()
+    query(' ')
 
 
 if __name__ == '__main__':

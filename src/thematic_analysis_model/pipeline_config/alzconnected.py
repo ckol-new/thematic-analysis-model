@@ -66,3 +66,58 @@ caregiver_general_embedder151_192 = {
     'model': common_data['model'],
     'embedding_type': 'all-MiniLM-L6-v2'
 }
+
+# caregiver for spouse or partner forum
+caregiver_partner_scraper1_50 = {
+    'seeds': generate_seeds(base='https://alzconnected.org/categories/spouses-or-partners/p', start=1, stop=50, end_seq=''),
+    'crawl_save_location': common_data['crawl_output_base'] / 'crawl_alzconnected_caregiver_partner_1_50_save1.txt',
+    'scrape_save_location': common_data['scrape_output_base'] / 'scrape_alzconnected_caregiver_partner_1_50_save1.jsonl',
+    'forum_origin': 'alzconnected'
+}
+caregiver_partner_embedder1_50 = {
+    'data_location': caregiver_partner_scraper1_50['scrape_save_location'],
+    'save_embeddings_location': common_data['embedding_output_base'] / 'embeddings_alzconnected_caregiver_partner_1_50_save1.jsonl',
+    'model': common_data['model'],
+    'embedding_type': 'all-MiniLM-L6-v2'
+}
+
+caregiver_partner_scraper51_100 = {
+    'seeds': generate_seeds(base='https://alzconnected.org/categories/spouses-or-partners/p', start=51, stop=100, end_seq=''),
+    'crawl_save_location': common_data['crawl_output_base'] / 'crawl_alzconnected_caregiver_partner_51_100_save1.txt',
+    'scrape_save_location': common_data['scrape_output_base'] / 'scrape_alzconnected_caregiver_partner_51_100_save1.jsonl',
+    'forum_origin': 'alzconnected'
+}
+caregiver_partner_embedder51_100 = {
+    'data_location': caregiver_partner_scraper51_100['scrape_save_location'],
+    'save_embeddings_location': common_data['embedding_output_base'] / 'embeddings_alzconnected_caregiver_partner_51_100_save1.jsonl',
+    'model': common_data['model'],
+    'embedding_type': 'all-MiniLM-L6-v2'
+}
+
+
+# caregiver for parent forum
+caregiver_parent_scraper1_50 = {
+    'seeds': generate_seeds(base='https://alzconnected.org/categories/caring-for-a-parent/p', start=1, stop=50, end_seq=''),
+    'crawl_save_location': common_data['crawl_output_base'] / 'crawl_alzconnected_caregiver_parent_1_50_save1.txt',
+    'scrape_save_location': common_data['scrape_output_base'] / 'scrape_alzconnecated_caregiver_parent_1_50_save1.jsonl',
+    'forum_origin': 'alzconnected'
+}
+caregiver_parent_embedder1_50 = {
+    'data_location': caregiver_partner_scraper1_50['scrape_save_location'],
+    'save_embeddings_location': common_data['embedding_output_base'] / 'embeddings_alzconnected_caregiver_parent_1_50_save1.jsonl',
+    'model': common_data['model'],
+    'embedding_type': 'all-MiniLM-L6-v2'
+}
+
+caregiver_parent_scraper51_100 = {
+    'seeds': generate_seeds(base='https://alzconnected.org/categories/caring-for-a-parent/p', start=51, stop=100, end_seq=''),
+    'crawl_save_location': common_data['crawl_output_base'] / 'crawl_alzconnected_caregiver_parent_51_100_save1.txt',
+    'scrape_save_location': common_data['scrape_output_base'] / 'scrape_alzconnected_caregiver_parent_51_100_save1.jsonl',
+    'forum_origin': 'alzconnected'
+}
+caregiver_parent_embedder51_100 = {
+    'data_location': caregiver_partner_scraper51_100['scrape_save_location'],
+    'save_embeddings_location': common_data['embedding_output_base'] / 'embeddings_alzconnected_caregiver_parent_51_100_save1.jsonl',
+    'model': common_data['model'],
+    'embedding_type': 'all-MiniLM-L6-v2'
+}
