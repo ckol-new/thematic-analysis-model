@@ -17,17 +17,13 @@ class ScrapingPipeline(ABC):
     def __init__(self):
         ...
 
+    # file i/o for seeds
     @classmethod
     def save_seeds(cls, seeds: list[str], fpath: Path):
-        with fpath.open('w', encoding='utf-8') as f:
-            for seed in seeds:
-                f.write(seed.strip() + '\n')
-
+        save_text(fpath, seeds)
     @classmethod
     def load_seeds(cls, fpath: Path) -> list[str]:
-        seeds: list[str] = []
-        with fpath.open('r', encoding='utf-8') as f:
-            for line in f:
-                seeds.append(line.strip())
-        return seeds        
+        return load_text(fpath)
+
+    # file i/o for 
     

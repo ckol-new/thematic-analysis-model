@@ -13,6 +13,37 @@ def get_file_length(file_path: Path) -> int:
         count = sum(1 for _ in f)
     return count
 
+# def save text
+def save_text(fpath: Path, arr: list[str]):
+    with fpath.open('w', encoding='utf-8') as f:
+        for i in arr:
+            f.write(i.strip() + '\n')
+# append text to file
+def append_text(fpath: Path, arr: list[str]):
+    prefix = "" # default
+    
+    # if pointer not on newline, add newline character to front
+    if os.path.exists(fpath) and os.path.getsize() > 0:
+        with fpath.open('rb', encoding='utf-8') as f:
+            f.seek(-1, os.SEEK_END)
+            last_char = f.read(1)
+            if last_char != b'\n':
+                prefix = '\n'
+
+    # save text to end of file
+    with fpath.open('a', encoding='utf-8') as f:
+        for i in arr:
+            f.write(f'{prefix}{i.strip()}\n')
+# def load text
+def load_text(fpath: Path) -> list[str]:
+    text: list[str] = []
+    with fpath.open('r') as f:
+        for line in f:
+            text.append(line.strip())
+    return text
+
+
+
 # load dataclasses from jsonl
 # not memory efficient, loads all at once
 def load_dclasses(file_path: Path, cls) -> list:
