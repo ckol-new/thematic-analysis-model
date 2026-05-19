@@ -24,3 +24,18 @@ def test_generate_seeds():
 
     assert expected == output
     assert expected2 == output2
+
+# test save and reading of seeds
+def test_save_load_seeds():
+    base = 'www.testWebsite/p'
+    end_seq = '/testing.com'
+    seeds = generate_seeds(base, 1, 5, end_seq)
+    fpath = Path.cwd() / 'tests' / 'testing_data' / 'test_save_seeds.txt'
+
+    # save seeds
+    ScrapingPipeline.save_seeds(seeds, fpath)
+
+    # laod seeds
+    loaded_seeds = ScrapingPipeline.load_seeds(fpath)
+
+    assert loaded_seeds == seeds
