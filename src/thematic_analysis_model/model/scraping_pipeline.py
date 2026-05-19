@@ -3,9 +3,10 @@ from thematic_analysis_model.model.util import *
 from abc import ABC, abstractmethod
 import codecs
 import requests
-import datetime
+from datetime import datetime
 from bs4 import BeautifulSoup
 import uuid
+import re
 
 # UTILITY functions
 # seed generator utility helps speed up process of generating seeds, which act as start nodes for the crawler to branch out from.
@@ -39,7 +40,7 @@ class ScrapingPipeline(ABC):
 
         # optionally save scrape output
         if self.crawl_save_location: 
-            self.save_crawl_output()
+            self.save_crawl_output(self.crawl_output, self.crawl_save_location)
 
         print("RUNNING SCRAPER")
         # run scraper
@@ -47,7 +48,7 @@ class ScrapingPipeline(ABC):
 
         # optionally save scrape output
         if self.scrape_save_location: 
-            self.save_scrape_output()
+            self.save_scrape_output(self.scrape_output, self.scrape_save_location)
 
     # run_crawler method acts as 'queue' of all crawl operations to be performed on each 'seed' or start node
     # generate crawl output which is the list of all pages to be scraped from
@@ -63,6 +64,7 @@ class ScrapingPipeline(ABC):
     
     # run scraper method acts as 'queue', running many scraping operations for every link in the crawl output
     def run_scraper(self) -> list[Post] | None:
+        print(1)
         scrape_output = []
         count = 0
         total = len(self.crawl_output)
@@ -72,11 +74,12 @@ class ScrapingPipeline(ABC):
                 print(f'% {100*(count / total)} finished')
             try:
                 scraped_post: Post = self.scrape(crawl_seed)
+                if not ScrapingPipeline.validate_post(scraped_post): continue
+                print(count)
+                scrape_output.append(scraped_post)
             except Exception as e:
                 print(f'ran into issue at {crawl_seed} exception: {e}')
             # validation step
-            if not self.validate_post(scraped_post): continue
-            scrape_output.append(scraped_post)
         
         if not scrape_output: return None
         return scrape_output
@@ -122,7 +125,6 @@ class ScrapingPipeline(ABC):
 
         return post
 
-
     # file i/o for seeds
     @classmethod
     def save_seeds(cls, seeds: list[str], fpath: Path):
@@ -147,7 +149,6 @@ class ScrapingPipeline(ABC):
     def load_scrape_output(cls, fpath: Path) -> list[Post]:
         return load_dclasses(file_path=fpath, cls=Post)
     
-
     # request page
     # returns html of page as string
     # optionally pass in header, otherwise it uses default
@@ -341,7 +342,7 @@ class ALZConnectedScrapingPipeline(ScrapingPipeline):
         comment = Comment(metadata, content) 
 
         # validate comment
-        if not self.validate_comment(comment): return None
+        if not ScrapingPipeline.validate_comment(comment): return None
         return comment
     
     # scrape content of comment, and do some initial cleaning of text

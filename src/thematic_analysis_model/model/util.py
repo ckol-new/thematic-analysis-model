@@ -15,6 +15,8 @@ def get_file_length(file_path: Path) -> int:
 
 # def save text
 def save_text(fpath: Path, arr: list[str]):
+    fpath.parent.mkdir(parents=True, exist_ok=True)
+
     with fpath.open('w', encoding='utf-8') as f:
         for i in arr:
             f.write(i.strip() + '\n')
@@ -68,6 +70,8 @@ def load_dclasses(file_path: Path, cls) -> list:
 def save_dclasses(file_path: Path, cls, dclasses: list):
     # get adapter to enable conversion
     adapter = TypeAdapter(cls)
+
+    file_path.parent.mkdir(parents=True, exist_ok=True)
 
     # open file
     with file_path.open('w', encoding='utf-8') as f:
