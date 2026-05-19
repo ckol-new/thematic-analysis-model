@@ -247,3 +247,127 @@ class ScrapingPipeline(ABC):
     @abstractmethod
     def scrape_comments(self, soup: BeautifulSoup, url: str, forum_origin: str) -> list[Comment] | None:
         ...
+
+
+# ALZConnected.org specific scraping pipeline
+class ALZConnectedScrapingPipeline(ScrapingPipeline):
+    def __init__(self, seeds: list[str] = None, crawl_save_location: Path | str | None = None, scrape_save_location: Path | str | None = None, forum_origin = 'alzconnected'):
+        super().__init__(seeds, crawl_save_location, scrape_save_location, forum_origin)
+
+    
+    # implement crawl indivudal page method
+    def crawl(self, url: str) -> list[str] | None:
+        html = ScrapingPipeline.request_page(url)
+        if not html: return None
+
+        soup = BeautifulSoup(html, 'html.parser')
+        links = set()
+
+        for link in soup.find_all('a'):
+            href = link.get('href')
+            if '/discussion/' in href:
+                links.add(href)
+
+        return list(links)
+
+
+    def scrape_title(self, soup: BeautifulSoup):
+        title_text = soup.title.string
+        title_text = title_text.removesuffix(' \u2014 ALZConnected') # '\u2014' is the em-dash escape key
+        return title_text
+
+    def scrape_content(self, soup: BeautifulSoup):
+        div_discussion = soup.find('div', class_='Discussion') # discussion div
+        div_content = div_discussion.find('div', class_='Message userContent') # get content out of discussion div
+        if not div_content: return None 
+        # get text and add separator for all separating elements in html
+        content_unclean = div_content.get_text(separator=' ', strip=True)
+        content_unclean = re.sub(r'\s+', ' ', content_unclean) # remove additional white space
+        #TODO clean unicode characters
+        decoded_text = ScrapingPipeline.process_text(content_unclean)
+
+        content_split = re.sub(r'\. ', '.\n', decoded_text) # separate each sentence by period
+        
+        return content_split
+
+    def scrape_date(self, soup: BeautifulSoup):
+        div_date = soup.find('div', class_='Meta DiscussionMeta')       
+        date = div_date.find('time').get('title')
+        return date
+
+
+    def scrape_username(self, soup: BeautifulSoup) -> str | None:
+        div_author = soup.find('div', class_='AuthorWrap')
+        username = div_author.find('a').text
+        if not username: return None
+        return username
+
+    def scrape_userid(self, soup: BeautifulSoup) -> str | None:
+        div_author = soup.find('div', class_='AuthorWrap')
+        userid = div_author.find('a').get('data-userid')
+        if not userid: return None
+        return userid
+
+    # scrape comments plural
+    def scrape_comments(self, soup: BeautifulSoup, url: str, forum_origin: str) -> list[Comment] | None:
+        # get list of soup objects for comments
+        commentlist_div = soup.find('ul', class_='MessageList DataList Comments pageBox')
+        # get each individual comment soup object from comment list
+        if not commentlist_div: return None
+        comments_div: list = commentlist_div.find_all('div', class_='Comment')
+
+        comments = []
+        # for each comment; scrape data
+        for comment_div in comments_div:
+            comment = self.scrape_comment(comment_div, url, forum_origin)
+            if comment:
+                comments.append(comment)
+
+        if not comments: return None
+        return comments
+            
+    # scrape individual comment
+    def scrape_comment(self, soup: BeautifulSoup, url: str, forum_origin: str) -> Comment | None:
+        # get comment data
+        content = self.scrape_comment_content(soup)
+        date = self.scrape_comment_date(soup)
+        date_accessed = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        username = self.scrape_comment_author_username(soup)
+        userid = self.scrape_comment_author_userid(soup)
+        author = Author(username, userid)
+        my_uuid = str(uuid.uuid4())
+        metadata = Metadata(my_uuid, author, url, date, forum_origin, date_accessed)
+        #TODO figure out how to handle sub-comments of comments
+        comment = Comment(metadata, content) 
+
+        # validate comment
+        if not self.validate_comment(comment): return None
+        return comment
+    
+    # scrape content of comment, and do some initial cleaning of text
+    def scrape_comment_content(self, soup: BeautifulSoup) -> str | None:
+        div_content = soup.find('div', class_='Message userContent') # get content out of discussion div
+        if not div_content: return None 
+        # get text and add separator for all separating elements in html
+        content_unclean = div_content.get_text(separator=' ', strip=True)
+        if not content_unclean: return None
+
+        content_clean = re.sub(r'\s+', ' ', content_unclean) # remove additional white space
+        #TODO clean unicode characters
+        content_split = re.sub(r'\. ', '.\n', content_clean) # separate each sentence by period
+
+        return content_split
+    def scrape_comment_date(self, soup: BeautifulSoup) -> str | None:
+        date = soup.find('time').get('title')
+        if not date: return None
+        return date
+    def scrape_comment_author_username(self, soup: BeautifulSoup) -> str | None:
+        div_author = soup.find('div', class_='AuthorWrap')
+        username = div_author.find('a').text
+        if not username: return None
+        return username
+    def scrape_comment_author_userid(self, soup: BeautifulSoup) -> str | None:
+        div_author = soup.find('div', class_='AuthorWrap')
+        userid = div_author.find('a').get('data-userid')
+        if not userid: return None
+        return userid
