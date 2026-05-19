@@ -7,6 +7,12 @@ from pydantic import TypeAdapter
 
 #util methods 
 
+# get file length
+def get_file_length(file_path: Path) -> int:
+    with file_path.open('r', encoding='utf-8') as f:
+        count = sum(1 for _ in f)
+    return count
+
 # load dataclasses from jsonl
 # not memory efficient, loads all at once
 def load_dclasses(file_path: Path, cls) -> list:
@@ -43,6 +49,7 @@ def save_dclasses(file_path: Path, cls, dclasses: list):
 def append_dclasses(file_path: Path, cls, dclasses: list):
     # get adapter to enable conversion
     adapter = TypeAdapter(cls)
+    prefix = '' # default value
 
     # confirm that last line is on newline
     if os.path.exists(file_path) and os.path.getsize(file_path) > 0:

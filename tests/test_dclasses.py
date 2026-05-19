@@ -106,5 +106,3 @@ def test_post_nocomments():
 
 
 
-
-
