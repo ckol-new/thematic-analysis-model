@@ -216,6 +216,34 @@ class ScrapingPipeline(ABC):
     def scrape_comments(self, soup: BeautifulSoup, url: str, forum_origin: str) -> list[Comment] | None:
         ...
 
+    # convert to sentence data, where each sentence is its own line with metadata, and line number.
+    # method converts individual file to sentences
+    @classmethod
+    def convert_to_sentences(cls, scrape_location: Path, save_location: Path):
+        # adapter to convert between json and Post dataclass
+        adapter = TypeAdapter(Post)
+        # list of each sentence + metadata + line number
+        sentence_dict_arr: list[dict] = []
+        line_count = 0
+
+        # create the sentence dict for each line.
+        with scrape_location.open('r') as f:
+            for line in f:
+                post = adapter.validate_json(line.strip()) # convert json line to post
+
+                for sentence in post.content.split('\n'):
+                    line_count += 1
+                    sentence_dict = {'sentence': sentence, 'line_number': line_count, 'uuid': post.metadata.uuid}
+                    sentence_dict_arr.append(sentence_dict)
+
+        # return each sentence dict array
+        return sentence_dict_arr
+
+
+
+
+                
+
     # save scrape output 
     def save_scrape_output(self):
         # adapter for data types
@@ -244,7 +272,7 @@ class ScrapingPipeline(ABC):
         ]
 
         return data_post
-
+    
     # pre-process text
     @classmethod
     def process_text(cls, text):
