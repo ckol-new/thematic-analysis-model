@@ -220,6 +220,34 @@ class ScrapingPipeline(ABC):
 
         return True
 
+    # split scrape output into sentences
+    # splits sentences from posts into their metadata, sentence, and line number of embedding
+    @classmethod
+    def split_sentences(cls, scrape_output: list[Post]) -> list[dict]:
+        sentence_arr: list[dict] = []
+        count = 0
+        for post in scrape_output:
+            for sentence in post.content.split('\n'):
+                count += 1
+                sentence_dict = {
+                    'line_num': str(count),
+                    'sentence': sentence.strip(),
+                    'uuid': post.metadata.uuid
+                }
+                sentence_arr.append(sentence_dict)
+        return sentence_arr
+    
+    # save sentences, either to existing file, or new one
+    @classmethod
+    def save_sentences(cls, sentences: list[dict], fpath: Path, type: str):
+        sentence_json = [json.dumps(sentence) for sentence in sentences]
+        if type == 'a':
+            append_text(fpath, sentence_json)
+        elif type == 'w':
+            save_text(fpath, sentence_json)
+        
+
+
     
     # abstract methods for getting each componenet of the post: implemented by each specific scraping pipeline
 

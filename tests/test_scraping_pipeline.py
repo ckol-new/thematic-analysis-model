@@ -151,3 +151,13 @@ def test_ALZConnected_scraper_serialization():
     posts = scraper.load_scrape_output(path)
 
     assert posts[0] == scraper.scrape_output[0]
+
+def test_save_sentence():
+    sentences = [
+        {'line_number': 1, 'sentence': 'this is a sentence', 'uuid': 'this is a uuid'},
+        {'line_number': 1, 'sentence': 'this is a sentence', 'uuid': 'this is a uuid'},
+        {'line_number': 1, 'sentence': 'this is a sentence', 'uuid': 'this is a uuid'}
+    ]
+    scraper = ALZConnectedScrapingPipeline()
+    p = Path.cwd() / 'tests' / 'testing_data' / 'test_save_sentences.jsonl'
+    scraper.save_sentences(sentences, p, 'w')
