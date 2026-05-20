@@ -10,7 +10,7 @@ from pydantic import TypeAdapter
 # get file length
 def get_file_length(file_path: Path) -> int:
     with file_path.open('r', encoding='utf-8') as f:
-        count = sum(1 for _ in f)
+        count = sum(1 for line in f if line.strip())
     return count
 
 # def save text
@@ -20,13 +20,15 @@ def save_text(fpath: Path, arr: list[str]):
     with fpath.open('w', encoding='utf-8') as f:
         for i in arr:
             f.write(i.strip() + '\n')
+
 # append text to file
-def append_text(fpath: Path, arr: list[str]):
+def append_text1(fpath: Path, arr: list[str]):
+    print('appending')
     prefix = "" # default
     
     # if pointer not on newline, add newline character to front
-    if os.path.exists(fpath) and os.path.getsize() > 0:
-        with fpath.open('rb', encoding='utf-8') as f:
+    if os.path.exists(fpath) and os.path.getsize(fpath) > 0:
+        with fpath.open('rb') as f:
             f.seek(-1, os.SEEK_END)
             last_char = f.read(1)
             if last_char != b'\n':
@@ -34,8 +36,23 @@ def append_text(fpath: Path, arr: list[str]):
 
     # save text to end of file
     with fpath.open('a', encoding='utf-8') as f:
+        print('open')
         for i in arr:
             f.write(f'{prefix}{i.strip()}\n')
+
+def append_text(fpath: Path, text: list[str]):
+    fpath.parent.mkdir(parents=True, exist_ok=True)
+    needs_newline = False
+    if os.path.exists(fpath) and os.path.getsize(fpath) > 0:
+        with fpath.open('rb') as f:
+            f.seek(-1, os.SEEK_END)
+            needs_newline = f.read(1) != b'\n'
+    with fpath.open('a', encoding='utf-8') as f:
+        if needs_newline:
+            f.write('\n')
+        for line in text:
+            f.write(line.strip() + '\n')
+
 # def load text
 def load_text(fpath: Path) -> list[str]:
     text: list[str] = []

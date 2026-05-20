@@ -161,3 +161,14 @@ def test_save_sentence():
     scraper = ALZConnectedScrapingPipeline()
     p = Path.cwd() / 'tests' / 'testing_data' / 'test_save_sentences.jsonl'
     scraper.save_sentences(sentences, p, 'w')
+
+base = Path.cwd() / 'tests' / 'testing_data'
+scraper = ALZConnectedScrapingPipeline(
+)
+
+ScrapingPipeline.process_sentences(
+    ScrapingPipeline.load_scrape_output(base / 'test_scrape.jsonl'),
+    base / 'test_sentence.jsonl',
+    'w'
+)
+
