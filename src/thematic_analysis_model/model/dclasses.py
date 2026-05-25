@@ -23,5 +23,19 @@ class Content(LanceModel):
     content: Optional[str] = None
     title: Optional[str] = None
     content_type: Optional[str] = None
+    is_split: bool
 
 
+class SchemaContent(LanceModel):
+    url: Optional[str] = None
+    uuid: Optional[str] = None
+    url_hash: Optional[str] = None
+    date: Optional[str] = None
+    date_accessed: Optional[str] = None
+    origin: Optional[str] = None
+    username: Optional[str] = None
+    userid: Optional[str] = None
+    content: Optional[str] = None
+    title: Optional[str] = None
+    content_type: Optional[str] = None
+    is_split: bool

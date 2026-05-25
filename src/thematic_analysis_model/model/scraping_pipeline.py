@@ -96,7 +96,8 @@ class ScrapingPipeline(ABC):
             metadata=post_metadata,
             content=self.scrape_content(discussion_div),
             title=self.scrape_title(soup),
-            content_type='post'
+            content_type='post',
+            is_split=False
         )
         # scrape comment(s)
         comments: list[Content] = self.scrape_comments(soup, url, origin)
@@ -326,7 +327,8 @@ class ALZConnectedScrapingPipeline(ScrapingPipeline):
             metadata=metadata,
             content=self.scrape_content(soup),
             title=None,
-            content_type='comment'
+            content_type='comment',
+            is_split=False
         )
 
         return comment
