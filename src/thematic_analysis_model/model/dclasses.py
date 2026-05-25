@@ -10,6 +10,7 @@ class Author(BaseModel):
 class Metadata(BaseModel):
     url: str
     uuid: str
+    url_hash: str
     date: str
     date_accessed: str
     author: Optional[Author] = None
