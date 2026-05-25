@@ -169,6 +169,7 @@ scraper = ALZConnectedScrapingPipeline(
 ScrapingPipeline.process_sentences(
     ScrapingPipeline.load_scrape_output(base / 'test_scrape.jsonl'),
     base / 'test_sentence.jsonl',
-    'w'
+    'a'
 )
 
+print(get_file_length(base / 'test_sentence.jsonl'))

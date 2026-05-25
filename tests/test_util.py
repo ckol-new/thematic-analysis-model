@@ -42,5 +42,30 @@ def test_append_dclasses():
 
     assert new_len == original_len + len(dclasses)
 
+def test_write_append_bug_txt():
+    save_location = Path.cwd() / 'tests' / 'testing_data' / 'test_write_append_bug.txt'
+    item = "I am the item"
+    items = [item, item, item]
 
+    # write file
+    save_text(save_location, items)
+
+    # append to file
+    append_text(save_location, items)
+
+    # test load items
+    assert items + items == load_text(save_location)
+
+def test_write_append_bug_dclasses():
+    fpath = Path.cwd() / 'tests' / 'testing_data' / 'test_write_append_bug.jsonl'
+    author = Author(test_var['username'], test_var['userid'])
+    dclasses = [author, author, author]
+
+    # write file
+    save_dclasses(fpath, Author,  dclasses)
+
+    # append file
+    append_dclasses(fpath, Author, dclasses)
+
+    assert dclasses + dclasses == load_dclasses(fpath, Author)
 

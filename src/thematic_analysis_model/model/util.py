@@ -15,11 +15,11 @@ def get_file_length(file_path: Path) -> int:
 
 # def save text
 def save_text(fpath: Path, arr: list[str]):
+    print('save')
     fpath.parent.mkdir(parents=True, exist_ok=True)
 
     with fpath.open('w', encoding='utf-8') as f:
-        for i in arr:
-            f.write(i.strip() + '\n')
+        f.writelines(line + '\n' for line in arr)
 
 # append text to file
 def append_text1(fpath: Path, arr: list[str]):
@@ -41,17 +41,18 @@ def append_text1(fpath: Path, arr: list[str]):
             f.write(f'{prefix}{i.strip()}\n')
 
 def append_text(fpath: Path, text: list[str]):
+    print('append')
     fpath.parent.mkdir(parents=True, exist_ok=True)
     needs_newline = False
     if os.path.exists(fpath) and os.path.getsize(fpath) > 0:
         with fpath.open('rb') as f:
             f.seek(-1, os.SEEK_END)
             needs_newline = f.read(1) != b'\n'
+    print(needs_newline)
     with fpath.open('a', encoding='utf-8') as f:
         if needs_newline:
             f.write('\n')
-        for line in text:
-            f.write(line.strip() + '\n')
+        f.writelines(line + '\n' for line in text)
 
 # def load text
 def load_text(fpath: Path) -> list[str]:

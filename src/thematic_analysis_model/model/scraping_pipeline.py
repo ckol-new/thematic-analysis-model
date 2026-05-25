@@ -192,6 +192,55 @@ class ScrapingPipeline(ABC):
             
         return text 
 
+    # method for splitting sentences
+    @classmethod
+    def split_sentence(cls, text: str) -> list[str]:
+        return text.split('\n')
+
+    # method for processing sentences
+    @classmethod
+    def process_sentences(cls, scrape_output: list[Post], fpath: Path, mode: str = 'w'):
+        # check current file length
+        count: int = 0 # defualt to zero
+        if os.path.exists(fpath):
+            # only in append mode
+            if mode == 'a':
+                count = get_file_length(fpath)
+        #DEBUG
+        print(count)       
+
+        sentences: list[dict] = []
+        # for each post, 
+        for post in scrape_output:
+            if post.content:
+                for i in ScrapingPipeline.split_sentence(post.content):
+                    count += 1
+                    print(count)
+                    sentences.append({'line_num': count, 'sentence': i, 'uuid': post.metadata.uuid})
+
+            # for each comment,
+            if not post.comments: continue
+            for comment in post.comments:
+                if not comment.content: continue
+                # split by sentence
+                for i in ScrapingPipeline.split_sentence(comment.content):
+                    count += 1
+                    print(count)
+                    sentences.append({'line_num': count, 'sentence': i, 'uuid': comment.metadata.uuid})
+
+
+        print(len(sentences))
+        # convert to json dict output
+        sentences_json = [json.dumps(sentence) for sentence in sentences]
+
+        print(len(sentences_json))
+        # save sentences
+        if mode == 'w':
+            save_text(fpath, sentences_json)
+        elif mode == 'a':
+            append_text(fpath, sentences_json)
+        else: raise Exception('invalid process_sentences() mode, must be either "a" or "w"')
+
      # method validates post returning true if valid, false if not
     @classmethod
     def validate_post(self, post: Post) -> bool:
@@ -220,63 +269,6 @@ class ScrapingPipeline(ABC):
 
         return True
 
-
-    # splits posts into sentences, and writes them to file.
-    @classmethod
-    def process_sentences(cls, scrape_output: list[Post], fpath: Path, save_type: str = 'w'):
-        # check current file length
-        # if file does not exist, create it
-        if save_type == 'w': count = 0
-        elif save_type == 'a': 
-            if os.path.exists(fpath):
-                count = get_file_length(fpath)
-            else: count = 0
-        
-        print(count)
-
-        sentence_arr: list[dict] = []
-        for post in scrape_output:
-            for sentence in post.content.split('\n'):
-                count += 1
-                sentence_dict = {
-                    'line_num': str(count),
-                    'sentence': sentence.strip(),
-                    'uuid': post.metadata.uuid
-                }
-                sentence_arr.append(sentence_dict)
-        print(len(sentence_arr))
-        sentence_json = [json.dumps(sentence) for sentence in sentence_arr]
-        if save_type == 'w':
-            save_text(fpath, sentence_json)
-        elif save_type == 'a':
-            append_text(fpath, sentence_json)
-
-    # split scrape output into sentences
-    # splits sentences from posts into their metadata, sentence, and line number of embedding
-    @classmethod
-    def split_sentences(cls, scrape_output: list[Post]) -> list[dict]:
-        sentence_arr: list[dict] = []
-        count = 0
-        for post in scrape_output:
-            for sentence in post.content.split('\n'):
-                count += 1
-                sentence_dict = {
-                    'line_num': str(count),
-                    'sentence': sentence.strip(),
-                    'uuid': post.metadata.uuid
-                }
-                sentence_arr.append(sentence_dict)
-        return sentence_arr
-    
-    # save sentences, either to existing file, or new one
-    @classmethod
-    def save_sentences(cls, sentences: list[dict], fpath: Path, save_type: str = 'w'):
-        sentence_json = [json.dumps(sentence) for sentence in sentences]
-        if save_type == 'a':
-            append_text(fpath, sentence_json)
-        elif save_type == 'w':
-            save_text(fpath, sentence_json)
-        
 
 
     
