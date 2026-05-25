@@ -4,7 +4,8 @@ from thematic_analysis_model.model.dclasses import Content
 
 def main():
     db = ldb.connect(LDB_PATH)
-    table = db.create_table(name=SCRAPE_DATA_TABLE_NAME, schema=Content)
+    table = db.open_table(SCRAPE_DATA_TABLE_NAME)
+
 
 if __name__ == '__main__':
     main()
