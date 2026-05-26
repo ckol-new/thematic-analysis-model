@@ -10,6 +10,11 @@ def main():
     scraped_tbl = db.open_table('scrape_content')
     sentence_tbl = db.open_table('sentence_data_table')
 
+    print(sentence_tbl.count_rows())
+
+
+
+
 
 
 
