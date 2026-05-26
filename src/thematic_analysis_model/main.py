@@ -1,4 +1,5 @@
 import lancedb as ldb
+from sentence_transformers import SentenceTransformer
 from thematic_analysis_model.config import LDB_PATH, SCRAPE_DATA_TABLE_NAME, schema
 from thematic_analysis_model.model.dclasses import Content, SchemaContent
 from thematic_analysis_model.model.scraping_pipeline import ALZConnectedScrapingPipeline, ScrapingPipeline
@@ -10,7 +11,9 @@ def main():
     scraped_tbl = db.open_table('scrape_content')
     sentence_tbl = db.open_table('sentence_data_table')
 
-    print(sentence_tbl.count_rows())
+    model = SentenceTransformer('all-MiniLM-L6-v2')
+    result = sentence_tbl.search(model.encode('Using the internet is hard')).select(['uuid', 'sentence', 'url']).to_pandas()
+    print(result.head(100))
 
 
 
