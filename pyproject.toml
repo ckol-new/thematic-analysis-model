@@ -9,6 +9,7 @@ authors = [
 requires-python = ">=3.13"
 dependencies = [
     "beautifulsoup4>=4.14.3",
+    "bertopic>=0.17.4",
     "lancedb>=0.30.2",
     "numpy>=2.4.4",
     "pandas>=3.0.3",
