@@ -13,13 +13,18 @@ class TopicModeller:
 
         self.merged_model: BERTopic = None
 
-    def run_model(self, table: Table, BATCH_SIZE: int = 200000):
+    def run_model(self, table: Table, spath: Path, BATCH_SIZE: int = 100000):
         # get batches, only if not already modelled
+        total = table.count_rows(filter='is_modelled = false')
         batches = table.search().where('is_modelled = false').select(['uuid', 'sentence', 'vector']).to_batches(batch_size=BATCH_SIZE)
         submodels: list[BERTopic] = []
 
         # batch process
+        count = 0
         for batch in batches:
+            count += BATCH_SIZE
+            print(f'modelling {count} of {total}')
+
             # model batch, add to submodels
             df = batch.to_pandas()
             ids = df['uuid'].to_list()
@@ -51,7 +56,10 @@ class TopicModeller:
 
         # tournament merge models together
         merged_model = self.tournament_merge_models(submodels)
+        self.merged_model = merged_model
         del submodels
+
+        self.save_merged_model(spath=spath)
 
     # merge models, return merged model
     def tournament_merge_models(self, submodels: list[BERTopic]) -> BERTopic:
@@ -77,7 +85,7 @@ class TopicModeller:
                     next_round_models.append(current_models[i])
 
             current_models = next_round_models
-            rount_num += 1
+            round_num += 1
         
         return current_models[0]
 
@@ -88,3 +96,15 @@ class TopicModeller:
     @classmethod
     def load_merged_model(self, spath=Path) -> BERTopic:
         return BERTopic.load(spath, 'all-MiniLM-L6-v2')
+
+    # for debugging
+    @classmethod
+    def reset_model_flag(cls, table: Table):
+        table.update(values_sql={
+            "is_modelled": "cast(false as boolean)"
+        })
+        print(table.count_rows(filter='is_modelled = true'))
+
+
+    def visualize_topics(self):
+        ...
