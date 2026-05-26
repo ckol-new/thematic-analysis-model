@@ -6,8 +6,9 @@ from thematic_analysis_model.model.embedding_pipeline import EmbeddingPipeline
 import pandas as pd
 
 def main():
-    ...
-
+    db = ldb.connect('lance_db')
+    scraped_tbl = db.open_table('scrape_content')
+    sentence_tbl = db.open_table('sentence_data_table')
 
 
 

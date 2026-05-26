@@ -4,7 +4,7 @@ import codecs
 import requests
 from abc import ABC, abstractmethod
 from bs4 import BeautifulSoup
-from  thematic_analysis_model.model.dclasses import Content, Metadata, Author
+from  thematic_analysis_model.model.dclasses import Content, Metadata, Author, SchemaContent
 from uuid import uuid4
 from pathlib import Path
 import datetime
@@ -60,13 +60,51 @@ class ScrapingPipeline(ABC):
 
             # if buffer fills, save to lancedb, empty, continue
             if len(scraped_content) >= BATCH_SIZE:
-                ScrapingPipeline.save_to_db(table, scraped_content)
+                schema_content_list: list[SchemaContent] = []
+                for c in scraped_content:
+                    sc = SchemaContent(
+                        url=c.metadata.url,
+                        uuid=c.metadata.uuid,
+                        url_hash=c.metadata.url_hash,
+                        date=c.metadata.date,
+                        date_accessed=c.metadata.date_accessed,
+                        origin=c.metadata.origin,
+                        username=c.metadata.author.username,
+                        userid=c.metadata.author.userid,
+                        content=c.content,
+                        title=c.title,
+                        content_type=c.content_type,
+                        is_split=c.is_split
+                    )
+                    schema_content_list.append(sc)
+
+                ScrapingPipeline.save_to_db(table, schema_content_list)
                 scraped_content = [] 
+                schema_content_list = []
 
         # save to lancedb
         if len(scraped_content) != 0:
-                ScrapingPipeline.save_to_db(table, scraped_content)
+                schema_content_list: list[SchemaContent] = []
+                for c in scraped_content:
+                    sc = SchemaContent(
+                        url=c.metadata.url,
+                        uuid=c.metadata.uuid,
+                        url_hash=c.metadata.url_hash,
+                        date=c.metadata.date,
+                        date_accessed=c.metadata.date_accessed,
+                        origin=c.metadata.origin,
+                        username=c.metadata.author.username,
+                        userid=c.metadata.author.userid,
+                        content=c.content,
+                        title=c.title,
+                        content_type=c.content_type,
+                        is_split=c.is_split
+                    )
+                    schema_content_list.append(sc)
+
+                ScrapingPipeline.save_to_db(table, schema_content_list)
                 scraped_content = [] 
+                schema_content_list = []
 
     # returns list of content posts/comments on page
     def scrape(self, url: str, origin: str, header: dict = None) -> list[Content] | None:
