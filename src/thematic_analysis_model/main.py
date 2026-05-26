@@ -11,8 +11,9 @@ def main():
     scraped_tbl = db.open_table('scrape_content')
     sentence_tbl = db.open_table('sentence_data_table')
 
+    question = 'Scam calls'
     model = SentenceTransformer('all-MiniLM-L6-v2')
-    result = sentence_tbl.search(model.encode('Using the internet is hard')).select(['uuid', 'sentence', 'url']).to_pandas()
+    result = sentence_tbl.search(model.encode(question)).select(['sentence', 'url']).to_pandas()
     print(result.head(100))
 
 
