@@ -53,7 +53,6 @@ class TopicModeller:
                 .when_matched_update_all()
                 .execute(upsert_dict)
             )
-
         # tournament merge models together
         merged_model = self.tournament_merge_models(submodels)
         self.merged_model = merged_model

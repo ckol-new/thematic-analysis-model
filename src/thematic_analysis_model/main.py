@@ -6,6 +6,8 @@ from thematic_analysis_model.model.scraping_pipeline import ALZConnectedScraping
 from thematic_analysis_model.model.embedding_pipeline import EmbeddingPipeline
 from thematic_analysis_model.model.topic_modeller import TopicModeller
 import pandas as pd
+from bertopic import BERTopic
+from pathlib import Path
 
 def main():
     db = ldb.connect('lance_db')
@@ -22,10 +24,22 @@ def main():
     TopicModeller.reset_model_flag(sentence_tbl)
     spath = base / 'test_topic_model'
     topic_modeller.run_model(sentence_tbl, spath)
-    '''
 
     spath = base / 'test_topic_model'
     merged_model = TopicModeller.load_merged_model(spath)
+
+    '''
+
+    mpath = Path.cwd() / 'test_topic_model'
+    model = BERTopic.load(mpath)
+    fig = model.visualize_topics()
+    fig.write_html('bertopics_pre-finetuning.html')
+    fig.show()
+
+
+
+
+    
 
 
 
