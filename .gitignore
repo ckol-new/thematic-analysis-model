@@ -11,3 +11,4 @@ wheels/
 
 data/
 lance_db/
+.DS_Store
