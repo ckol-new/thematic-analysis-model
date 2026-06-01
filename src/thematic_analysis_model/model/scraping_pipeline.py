@@ -30,17 +30,17 @@ class ScrapingPipeline(ABC):
         # for seed in seed
             # get page
             # get outgoing connections to posts
-        crawl_output: list[str] = []
+        crawl_output: set[str] = set()
         for seed in seeds:
             soup: BeautifulSoup = ScrapingPipeline.request_page(seed, header)
-            crawl_output = crawl_output + self.crawl_page(soup)
+            crawl_output.update(self.crawl_page(soup))
 
         # optionally save
         if save_location:
             with save_location.open('w', encoding='utf-8') as f:
-                f.writelines(line + '\n' for line in crawl_output)
+                f.writelines(line + '\n' for line in list(crawl_output))
         
-        return crawl_output
+        return list(crawl_output)
 
     # scrape and save to db
     def run_scraper(self, table: Table, crawl_output: list[str], origin: str, BATCH_SIZE: int =10000, header: dict = None):
