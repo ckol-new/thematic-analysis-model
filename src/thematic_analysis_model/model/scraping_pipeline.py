@@ -4,7 +4,7 @@ import codecs
 import requests
 from abc import ABC, abstractmethod
 from bs4 import BeautifulSoup
-from  thematic_analysis_model.model.dclasses import Content, Metadata, Author, SchemaContent
+from  thematic_analysis_model.model.dclasses import SchemaContent, SchemaSentence
 from uuid import uuid4
 import hashlib
 from pathlib import Path
