@@ -39,3 +39,11 @@ class SchemaContent(LanceModel):
     title: Optional[str] = None
     content_type: Optional[str] = None
     is_split: bool
+
+class SchemaSentence(LanceModel):
+    url: Optional[str] = None
+    content_uuid: Optional[str] = None
+    url_hash: Optional[str] = None
+    date: Optional[str] = None
+    sentence: Optional[str] = None
+    sentence_hash: Optional[bytes] = None
