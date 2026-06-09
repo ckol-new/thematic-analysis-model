@@ -29,6 +29,17 @@ SENTENCE_SCHEMA = pa.schema([
     pa.field('content_type', pa.string())
 ])
 
+# SCHEMA
+SENTENCE_SCHEMA2 = pa.schema([
+    pa.field('uuid', pa.string()),
+    pa.field('sentence', pa.string()),
+    pa.field('vector', pa.list_(pa.float32(), EMBEDDING_DIMENSIONS, nullable=True)),
+    pa.field('url', pa.string()),
+
+])
+
+
+
 # models
 S_MODEL_NAME = 'all-MiniLM-L6-v2'
 
