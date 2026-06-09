@@ -6,8 +6,10 @@ from abc import ABC, abstractmethod
 from bs4 import BeautifulSoup
 from  thematic_analysis_model.model.dclasses import Content, Metadata, Author, SchemaContent
 from uuid import uuid4
+import hashlib
 from pathlib import Path
 import datetime
+
 
 
 # ahh
@@ -156,6 +158,11 @@ class ScrapingPipeline(ABC):
 
 
     # CLASS METHODS
+    # method for removing duplicate posts from post database
+    @classmethod
+    def remove_duplicates(cls, table: Table):
+        ...
+
     
     # methods for saving and loading seeds from file, note that the seeds must common from same forum
     @classmethod
