@@ -11,3 +11,5 @@ DS_Store
 .venv
 .lance_db/
 lance_db/
+.database/
+database/
