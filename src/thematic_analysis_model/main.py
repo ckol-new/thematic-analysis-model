@@ -11,12 +11,17 @@ def main():
     tbl = db.open_table('content')
     stbl = db.open_table('sentence')
 
-    scraping_pipeline = ALZConnectedScrapingPipeline()
-    asyncio.run(
-        scraping_pipeline.run_pipeline(
-            ScrapingPipeline.seed_generator('https://alzconnected.org/categories/i-have-alzheimers-or-other-dementia/p', 1, 13, '')
-        )
-    )
+    seeds = [
+        'https://alzconnected.org/categories/i-have-alzheimers-or-other-dementia',
+        'https://alzconnected.org/categories/i-have-alzheimers-or-other-dementia/p2',
+        'https://alzconnected.org/categories/i-have-alzheimers-or-other-dementia/p3'
+    ]
+    pipeline = ALZConnectedScrapingPipeline()
+    asyncio.run(pipeline.run_pipeline(
+        seeds=seeds,
+        table=tbl
+    ))
+
 
 if __name__ == '__main__':
     main()

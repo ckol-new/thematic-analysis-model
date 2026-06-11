@@ -23,10 +23,11 @@ class ScrapingPipeline(ABC):
         scrape_queue = asyncio.Queue()
         
         # run crawl pipeline
-        cls.run_crawl_pipeline(seed_queue, crawl_queue)
+        await cls.run_crawl_pipeline(seed_queue, crawl_queue)
+        print(crawl_queue.qsize())
 
         # run scrape pipeline
-        cls.run_scrape_pipeline(table, crawl_queue, scrape_queue)
+        # cls.run_scrape_pipeline(table, crawl_queue, scrape_queue)
         # batch save as necessary
         ...
 
@@ -37,15 +38,17 @@ class ScrapingPipeline(ABC):
     
     @classmethod
     async def run_crawl_pipeline(cls, seed_queue: asyncio.Queue, crawl_queue: asyncio.Queue, num_crawler: int = 20):
+        print('CRAWL BEGIN')
         # trask group of crawlers, each with a httpx.async client
         async with httpx.AsyncClient() as client:
-            async with asyncio.TaskGroup as tg:
+            async with asyncio.TaskGroup() as tg:
                 workers = []
                 for i in range(1, num_crawler + 1):
-                    workers.append(cls.crawler(worker_id=i), client, seed_queue, crawl_queue)
+                    workers.append(asyncio.create_task(cls.crawler(i, client, seed_queue, crawl_queue)))
 
                 # check for all tasks to finish
                 await seed_queue.join()
+
                 # shut down workers
                 for worker in workers:
                     worker.cancel()
@@ -69,6 +72,7 @@ class ScrapingPipeline(ABC):
             # save crawl nodes to crawl_queue
             for node in crawl_nodes:
                 await crawl_queue.put(node)               
+                print(f'added node: {node}')
 
             # task done
             seed_queue.task_done()
@@ -123,22 +127,35 @@ class ScrapingPipeline(ABC):
 
     @classmethod
     async def request_page(cls, client: httpx.AsyncClient, url: str) -> BeautifulSoup:
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
+        }
         try:
             # wait for response
-            response = await client.get(url)
+            response = await client.get(url, headers=headers)
+            print(response.status_code)
 
             # get text
             html = response.text
 
             # get soup
-            soup = BeautifulSoup(html)
+            soup = BeautifulSoup(html, 'html.parser')
 
             # return
             return soup
 
         # error catch/process
-        except Exception as e:
-            print(f'failed at {url}, exception: {e}')
+        except BaseException as e:
+            print(f'💥 Caught at {url}! Exception Type: {type(e).__name__} -> Message: {e}')
+        
+            # CRITICAL: If it is a CancelledError, you MUST re-raise it so the 
+            # event loop can clean up the task properly.
+            if type(e).__name__ == "CancelledError":
+                raise
+                
+            return None
 
     @classmethod
     async def saver(cls, table: lancedb.Table, scrape_queue: asyncio.Queue, LANCE_BATCH_SIZE: int = 1000):
@@ -161,29 +178,10 @@ class ScrapingPipeline(ABC):
         # get all valid posts
         ...
 
-    #implemetn in subclass
+    #implement in subclass
     @classmethod
     def scrape(cls, soup: BeautifulSoup, url: str, origin: str) -> SchemaContent:
-
-
-
-        content: SchemaContent = SchemaContent(
-            url=url,
-            url_hash=xxhash.xxh64_digest(),
-            uuid=str(uuid.uuid4()),
-            date=cls.scrape_date(),
-            date_accessed=str(datetime.date.today()),
-            origin = origin,
-            username = cls.scrape_username(soup),
-            content = cls.scrape_content(soup),
-            content_type=''
-
-        )
-
         ...
-
-
-
     # all abstract methods
     @classmethod
     def scrape_date(cls, soup: BeautifulSoup) -> str:
@@ -198,3 +196,18 @@ class ScrapingPipeline(ABC):
     def scrape_comment_content(cls, soup: BeautifulSoup) -> str:
         ...
     
+
+class ALZConnectedScrapingPipeline(ScrapingPipeline):
+    def __init__(self):
+        super().__init__()
+
+
+    # crawl page
+    @classmethod
+    def crawl(cls, soup: BeautifulSoup) -> list[str]:
+        links = set()
+        for link in soup.find_all('a'):
+            href = link.get('href')
+            if '/discussion/' in href:
+                links.add(href)
+        return list(links)
