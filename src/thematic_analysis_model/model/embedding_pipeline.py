@@ -12,10 +12,12 @@ class EmbeddingPipeline:
         pass
 
     @classmethod
-    def run_pipeline(cls, tbl: Table, stbl: Table, model: SentenceTransformer, READ_BATCH_SIZE: int = 5000, WRITE_BATCH_SIZE: int = 4000, EMBED_BATCH_SIZE: int = 1000):
+    def run_pipeline(cls, tbl: Table, stbl: Table, model: SentenceTransformer, PROCESS_BATCH_SIZE: int = 5000,  EMBED_BATCH_SIZE: int = 1000):
         # process/split text (async + sync)
+        cls.run_processing_pipeline(tbl, stbl, PROCESS_BATCH_SIZE)
 
         # generate embeddings (sync)
+        cls.run_embedding_pipeline(stbl, model, EMBED_BATCH_SIZE)
         ...
 
     @classmethod
@@ -60,7 +62,50 @@ class EmbeddingPipeline:
 
     @classmethod
     def run_embedding_pipeline(cls, stbl: Table, model: SentenceTransformer, EMBED_BATCH_SIZE: int = 1000):
-        ...
+        count = 0
+        total = stbl.count_rows(filter="is_embedded = false")
+        while True:
+            count += 1
+            print(f'embedding batch {count}')
+            print(f'embedding %{100 * (count / total)} finished')           
+
+            # get sentence batch
+            batch_df = stbl.search().where('is_embedded = false').limit(EMBED_BATCH_SIZE).select(['sentence', 'sentence_uuid']).to_pandas()
+
+            # check to break loop
+            if batch_df.empty:
+                print('FINISHED EMBEDDING')
+                break
+
+            docs = batch_df['sentence'].to_list()
+            uuids = batch_df['sentence_uuid'].to_list()
+
+
+
+            # embed batch
+            embeddings = model.encode(docs)
+
+            # save to db
+            payload = [{'sentence_uuid': s_uuid, 'vector': vec} for s_uuid, vec in zip(uuids, embeddings)]
+            (
+                stbl.merge_insert(on='sentence_uuid')
+                .when_matched_update_all()
+                .execute(payload)
+            )
+            print('saved to db')
+            
+            # update flags
+            upsert_dict = [{'sentence_uuid': s_uuid, 'is_embedded': True} for s_uuid in uuids]
+            (
+                stbl.merge_insert(on='sentence_uuid')
+                .when_matched_update_all()
+                .execute(upsert_dict)
+            )
+            print('updated flags')
+
+
+
+
 
             
 
@@ -113,6 +158,4 @@ class EmbeddingPipeline:
         return split_txt
 
 
-    @classmethod
-    def embed_text(cls, text: str, model: SentenceTransformer):
-        ...
+        

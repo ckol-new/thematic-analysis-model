@@ -145,6 +145,7 @@ class ScrapingPipeline(ABC):
             
         ...
 
+
     @classmethod
     async def request_page(cls, client: httpx.AsyncClient, url: str) -> BeautifulSoup:
         headers = {
@@ -218,7 +219,7 @@ class ScrapingPipeline(ABC):
                 batch.clear()
                 deduplicated_batch.clear()
 
-    
+
 
     # implement in subclass
     @classmethod
