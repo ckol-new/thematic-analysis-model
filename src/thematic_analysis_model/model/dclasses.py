@@ -25,6 +25,6 @@ class SchemaSentence(LanceModel):
     sentence_hash: str 
     sentence_uuid: str
     date: str
-    vector: Vector(dim=SENTENCE_EMBEDDING_DIMENSIONS)
+    vector: Vector(dim=SENTENCE_EMBEDDING_DIMENSIONS) | None
     is_embedded: bool = False
     is_modelled: bool  = False
