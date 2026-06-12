@@ -5,6 +5,28 @@ from thematic_analysis_model.model.embedding_pipeline import EmbeddingPipeline
 import asyncio
 from sentence_transformers import SentenceTransformer
 
+'''
+# FINISHED ALREADY
+config = [
+    {
+        'seeds': ScrapingPipeline.seed_generator('https://forum.alzheimers.org.uk/forums/i-have-dementia.56/page-', start=1, stop=109),
+        'origin': 'AlzSocietyDementiaSupportForum/I-have-dementia',
+        'scraper': AlzSocietyDementiaSupportForum()
+    },
+    {
+        'seeds': ScrapingPipeline.seed_generator('https://forum.alzheimers.org.uk/forums/i-have-a-partner-with-dementia.69/page-', start=1, stop=109),
+        'origin': 'AlzSocietyDementiaSupportForum/I-have-a-partner-with-dementia',
+        'scraper': AlzSocietyDementiaSupportForum()
+    },
+    {
+        'seeds': ScrapingPipeline.seed_generator('https://alzconnected.org/categories/i-am-a-caregiver-(general-topics)/p', 1, 100),
+        'origin': 'ALZConnected/I-Am-A-Caregiver',
+        'scraper': ALZConnectedScrapingPipeline()
+    }
+]
+'''
+
+
 def main():
     db = lancedb.connect('database')
 
@@ -18,48 +40,33 @@ def main():
     tbl = db.open_table('content')
     stbl = db.open_table('sentence')
 
-    '''
-    seeds = [
-        'https://forum.alzheimers.org.uk/forums/i-have-dementia.56/page-4',
-        'https://forum.alzheimers.org.uk/forums/i-have-dementia.56/page-3',
-        'https://forum.alzheimers.org.uk/forums/i-have-dementia.56/page-2',
-        'https://forum.alzheimers.org.uk/forums/i-have-dementia.56/page-1',
-        'https://forum.alzheimers.org.uk/forums/i-have-dementia.56/page-5',
-        'https://forum.alzheimers.org.uk/forums/i-have-dementia.56/page-6',
-        'https://forum.alzheimers.org.uk/forums/i-have-dementia.56/page-7',
-        'https://forum.alzheimers.org.uk/forums/i-have-dementia.56/page-8',
-        'https://forum.alzheimers.org.uk/forums/i-have-dementia.56/page-9',
-    ]
-    pipeline = AlzSocietyDementiaSupportForum()
-    asyncio.run(pipeline.run_pipeline(
-        seeds=seeds,
-        table=tbl,
-        origin='alzsocietydementiasupportforum/I-have-dementia'
-    ))
-
     print(tbl.count_rows())
-    df = tbl.search().select(['url_hash']).to_pandas()
-    print(df.head(100))
+    print(stbl.count_rows())
 
     model = SentenceTransformer('all-MiniLM-L6-v2')
-    embed_pipeline = EmbeddingPipeline()
-    embed_pipeline.run_pipeline(
-        tbl, stbl, model
-    )
 
-    '''
+    for forum in config:
+        print('SCRAPING')
+        asyncio.run(
+            forum['scraper'].run_pipeline(
+                seeds=forum['seeds'],
+                table=tbl,
+                origin=forum['origin']
+            )
+        )
 
-    '''
-    embed_pipeline = EmbeddingPipeline()
+        print("EMBEDDING")
+        embed_pipeline = EmbeddingPipeline()
+        embed_pipeline.run_pipeline(
+            tbl, stbl, model
+        )
 
-    embed_pipeline.run_embedding_pipeline(
-        stbl,
-        model
-    )
-    '''
+    print(tbl.count_rows())
+    print(stbl.count_rows())
 
-    df = stbl.search().select(['url']).to_pandas()['url'].to_list()
-    print(df[0])
+
+
+    
 
 
 

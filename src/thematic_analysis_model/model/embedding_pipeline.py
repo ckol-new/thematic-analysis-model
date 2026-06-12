@@ -27,7 +27,6 @@ class EmbeddingPipeline:
             count += 1 
             print(f'processing batch {count}') 
             content_list: list[SchemaContent ]= tbl.search().where('is_split = false').limit(BATCH_SIZE).to_pydantic(SchemaContent)
-            print(len(content_list))
 
             # check if finished
             if len(content_list) == 0:
@@ -42,14 +41,12 @@ class EmbeddingPipeline:
                 .when_matched_update_all()
                 .execute(upsert_dict)
             )
-            print('updated flags')
 
             # split each sentence
             split_sentences: list[SchemaSentence] = []
             for content in content_list:
                 split_result: list[SchemaSentence] = cls.process_content(content)
                 split_sentences.extend(split_result)
-            print('split sentences')
 
             # save w/o duplicates
             (
@@ -57,7 +54,6 @@ class EmbeddingPipeline:
                 .when_not_matched_insert_all()
                 .execute(split_sentences)
             )           
-            print('saved')
 
 
     @classmethod
@@ -65,9 +61,9 @@ class EmbeddingPipeline:
         count = 0
         total = stbl.count_rows(filter="is_embedded = false")
         while True:
-            count += 1
-            print(f'embedding batch {count}')
-            print(f'embedding %{100 * (count / total)} finished')           
+            count += EMBED_BATCH_SIZE
+            if total != 0:
+                print(f'embedding %{100 * (count / total)} finished')           
 
             # get sentence batch
             batch_df = stbl.search().where('is_embedded = false').limit(EMBED_BATCH_SIZE).select(['sentence', 'sentence_uuid']).to_pandas()
@@ -92,7 +88,6 @@ class EmbeddingPipeline:
                 .when_matched_update_all()
                 .execute(payload)
             )
-            print('saved to db')
             
             # update flags
             upsert_dict = [{'sentence_uuid': s_uuid, 'is_embedded': True} for s_uuid in uuids]
@@ -101,7 +96,6 @@ class EmbeddingPipeline:
                 .when_matched_update_all()
                 .execute(upsert_dict)
             )
-            print('updated flags')
 
 
 
@@ -111,7 +105,6 @@ class EmbeddingPipeline:
 
     @classmethod
     def process_content(cls, content: SchemaContent) -> list[SchemaSentence]:
-        print('process content')
         # split text
         split_text: list[str] = cls.split_text(content.content)
         if not split_text:
@@ -140,8 +133,6 @@ class EmbeddingPipeline:
             )
 
             sentences.append(s_sentence)
-
-        print(len(sentences))
 
         if len(sentences) == 0:
             return []

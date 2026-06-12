@@ -25,7 +25,6 @@ class ScrapingPipeline(ABC):
         
         # run crawl pipeline
         await cls.run_crawl_pipeline(seed_queue, crawl_queue)
-        print(crawl_queue.qsize())
 
         # run scrape pipeline
         # batch save as necessary
@@ -67,15 +66,14 @@ class ScrapingPipeline(ABC):
             try:
                 # request page by seed
                 soup: BeautifulSoup = await cls.request_page(client, url)
+                if not soup: continue
 
                 # get crawl nodes
                 crawl_nodes: list[str] = cls.crawl(soup)
-                print(f'crawl nodes: {crawl_nodes}')
 
                 # save crawl nodes to crawl_queue
                 for node in crawl_nodes:
                     await crawl_queue.put(node)               
-                    print(f'added node: {node}')
             except Exception as e:
                 print(f"💥 Unexpected parsing error at {url}: {type(e).__name__} -> {e}")
             finally:
@@ -85,7 +83,7 @@ class ScrapingPipeline(ABC):
     @classmethod
     async def run_scrape_pipeline(cls, table: lancedb.Table, crawl_queue: asyncio.Queue, scrape_queue: asyncio.Queue, origin: str, num_scrapers: int = 20):
         # task group of scrapers, and saver 
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True, max_redirects=3) as client:
             async with asyncio.TaskGroup() as tg:
                 print('INITIALIZING SCRAPERS')
                 scrapers = [tg.create_task(cls.scraper(i, client, crawl_queue, scrape_queue, origin)) for i in range(1, num_scrapers + 1)]
@@ -120,7 +118,6 @@ class ScrapingPipeline(ABC):
         while True:
             # check scrape size, if too full wait until saver flushes it
             if scrape_queue.qsize() >= SCRAPED_MAX_SIZE:
-                print('pausing scraper for saver')
                 await asyncio.sleep(0) # yield to event loop, should turn off all scrapers until saver flushes 
 
             # get url
@@ -129,11 +126,10 @@ class ScrapingPipeline(ABC):
             try:
                 # get soup obj
                 soup: BeautifulSoup = await cls.request_page(client, url)
-                print('got page')
+                if not soup: continue
 
                 # scrape content -> content dclass list
                 contents: list[SchemaContent] = cls.scrape(soup, url, origin)
-                print('got content')
 
                 # add to scrape_queue
                 for content in contents:
@@ -157,7 +153,8 @@ class ScrapingPipeline(ABC):
         try:
             # wait for response
             response = await client.get(url, headers=headers)
-            print(response.status_code)
+            if response.status_code not in [200, 301, 303]: 
+                print(response.status_code)
 
             # get text
             html = response.text
@@ -198,7 +195,6 @@ class ScrapingPipeline(ABC):
                     .when_not_matched_insert_all()
                     .execute(deduplicated_batch)
                 )
-                print(f"saved batch of length {len(deduplicated_batch)}")
                 batch.clear()
                 deduplicated_batch.clear()
                 scrape_queue.task_done()
@@ -216,7 +212,6 @@ class ScrapingPipeline(ABC):
                     .when_not_matched_insert_all()
                     .execute(batch)
                 )
-                print(f"saved batch of length {len(deduplicated_batch)}")
                 batch.clear()
                 deduplicated_batch.clear()
 
@@ -264,6 +259,14 @@ class ScrapingPipeline(ABC):
         return text 
         ...
     
+    @classmethod
+    def seed_generator(cls, prefix: str, start: int, stop: int, suffix: str = ''):
+        seeds = []
+        for i in range(start, stop):
+            seed = prefix + str(i) + suffix
+            seeds.append(seed)
+        return seeds
+    
 
 class ALZConnectedScrapingPipeline(ScrapingPipeline):
     def __init__(self):
@@ -282,7 +285,6 @@ class ALZConnectedScrapingPipeline(ScrapingPipeline):
 
     @classmethod
     def scrape(cls, soup: BeautifulSoup, url: str, origin: str) -> list[SchemaContent]:
-        print('scraping')
         # get post
         post: SchemaContent = cls.scrape_post(soup, url, origin)
         if not post:
@@ -291,7 +293,6 @@ class ALZConnectedScrapingPipeline(ScrapingPipeline):
         parent_uuid: str = post.uuid
 
         # get comments
-        print('scraping comments')
         comments: list[SchemaContent] = []
         comment_div_list = soup.find_all('div', class_='Comment')
         for comment_div in comment_div_list:
@@ -303,7 +304,6 @@ class ALZConnectedScrapingPipeline(ScrapingPipeline):
     
     @classmethod
     def scrape_post(cls, soup: BeautifulSoup, url: str, origin: str) -> SchemaContent:
-        print('scraping post')
         # get post div
         post_div = soup.find('div', class_='Discussion')
 
@@ -338,13 +338,11 @@ class ALZConnectedScrapingPipeline(ScrapingPipeline):
             content_type=content_type,
             is_split=False
         )
-        print(content)
 
         return content
 
     @classmethod
     def scrape_comment(cls, soup: BeautifulSoup, url: str, parent_uuid: str, origin: str) -> SchemaContent:
-        print('scrape comment')
         # get content
         content = cls.scrape_content(soup)
 
@@ -389,7 +387,7 @@ class ALZConnectedScrapingPipeline(ScrapingPipeline):
         text: str = cls.clean_text(text)
 
         # validate text
-        if len(text) <= 5:
+        if not text or len(text) <= 5:
             return None
 
         # return text
@@ -426,16 +424,17 @@ class AlzSocietyDementiaSupportForum(ScrapingPipeline):
             href = link.get('href')
             if not href: continue
             if '/threads/' in href:
-                l = 'https://forum.alzheimers.org.uk' + href
-                links.add(l)
+                if href.startswith('https'):
+                    links.add(href)
+                else: 
+                    l = 'https://forum.alzheimers.org.uk' + href
+                    links.add(l)
 
         if len(list(links)) == 0: return []
-        print(f'crawl nodes: {len(list(links))}')
         return list(links)
 
     @classmethod
     def scrape(cls, soup: BeautifulSoup, url: str, origin: str) -> list[SchemaContent]:
-        print('scraping')
         # get post
         post: SchemaContent = cls.scrape_post(soup, url, origin)
         if not post:
@@ -444,7 +443,6 @@ class AlzSocietyDementiaSupportForum(ScrapingPipeline):
         parent_uuid: str = post.uuid
 
         # get comments
-        print('scraping comments')
         comments: list[SchemaContent] = []
         comment_div_list = soup.find_all('article', class_='message--post')
         for comment_div in comment_div_list:
@@ -457,7 +455,6 @@ class AlzSocietyDementiaSupportForum(ScrapingPipeline):
     
     @classmethod
     def scrape_post(cls, soup: BeautifulSoup, url: str, origin: str) -> SchemaContent:
-        print('scraping post')
         # get post div
         post_div = soup.find('article', class_='message-threadStarterPost')
         if not post_div: return None
@@ -493,13 +490,11 @@ class AlzSocietyDementiaSupportForum(ScrapingPipeline):
             content_type=content_type,
             is_split=False
         )
-        print(content)
 
         return content
 
     @classmethod
     def scrape_comment(cls, soup: BeautifulSoup, url: str, parent_uuid: str, origin: str) -> SchemaContent:
-        print('scrape comment')
 
         # get content
         content = cls.scrape_content(soup)
@@ -546,7 +541,7 @@ class AlzSocietyDementiaSupportForum(ScrapingPipeline):
         text: str = cls.clean_text(text)
 
         # validate text
-        if len(text) <= 5:
+        if not text or len(text) <= 5:
             return None
 
         # return text
