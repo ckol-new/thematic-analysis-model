@@ -1,4 +1,5 @@
 from lancedb import Table
+from tqdm import tqdm
 import asyncio
 import xxhash
 import uuid
@@ -23,10 +24,12 @@ class EmbeddingPipeline:
     @classmethod
     def run_processing_pipeline(cls, tbl: Table, stbl: Table, BATCH_SIZE: int = 5000):
         count = 0
+        total = tbl.count_rows(filter='is_split = false')
+        pbar = tqdm(total=total, desc='PROCESSING POSTS', unit='posts')
         while True:
-            count += 1 
-            print(f'processing batch {count}') 
-            content_list: list[SchemaContent ]= tbl.search().where('is_split = false').limit(BATCH_SIZE).to_pydantic(SchemaContent)
+            content_list: list[SchemaContent]= tbl.search().where('is_split = false').limit(BATCH_SIZE).to_pydantic(SchemaContent)
+
+            pbar.update(len(content_list)) # update progress bar
 
             # check if finished
             if len(content_list) == 0:
@@ -58,15 +61,12 @@ class EmbeddingPipeline:
 
     @classmethod
     def run_embedding_pipeline(cls, stbl: Table, model: SentenceTransformer, EMBED_BATCH_SIZE: int = 1000):
-        count = 0
         total = stbl.count_rows(filter="is_embedded = false")
+        pbar = tqdm(total=total, desc='EMBEDDING', unit='sentence')
         while True:
-            count += EMBED_BATCH_SIZE
-            if total != 0:
-                print(f'embedding %{100 * (count / total)} finished')           
-
             # get sentence batch
             batch_df = stbl.search().where('is_embedded = false').limit(EMBED_BATCH_SIZE).select(['sentence', 'sentence_uuid']).to_pandas()
+            pbar.update(batch_df.shape[0])
 
             # check to break loop
             if batch_df.empty:
@@ -75,11 +75,12 @@ class EmbeddingPipeline:
 
             docs = batch_df['sentence'].to_list()
             uuids = batch_df['sentence_uuid'].to_list()
-
+            del batch_df
 
 
             # embed batch
             embeddings = model.encode(docs)
+            del docs
 
             # save to db
             payload = [{'sentence_uuid': s_uuid, 'vector': vec} for s_uuid, vec in zip(uuids, embeddings)]

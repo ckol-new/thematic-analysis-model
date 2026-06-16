@@ -1,8 +1,10 @@
 from abc import ABC, abstractmethod
 from .dclasses import SchemaContent
 import lancedb
+from pydantic import ValidationError
 import asyncio
 import httpx
+from tqdm import tqdm
 import codecs
 import uuid
 import xxhash
@@ -39,24 +41,24 @@ class ScrapingPipeline(ABC):
     async def run_crawl_pipeline(cls, seed_queue: asyncio.Queue, crawl_queue: asyncio.Queue, num_crawler: int = 20):
         print('CRAWL BEGIN')
         # trask group of crawlers, each with a httpx.async client
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            async with asyncio.TaskGroup() as tg:
-                workers = []
-                for i in range(1, num_crawler + 1):
-                    workers.append(asyncio.create_task(cls.crawler(i, client, seed_queue, crawl_queue)))
+        with tqdm(total=seed_queue.qsize(), desc='CRAWLING SEEDS', unit='url') as pbar:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                async with asyncio.TaskGroup() as tg:
+                    workers = []
+                    for i in range(1, num_crawler + 1):
+                        workers.append(asyncio.create_task(cls.crawler(i, client, seed_queue, crawl_queue, pbar)))
 
-                # check for all tasks to finish
-                await seed_queue.join()
+                    # check for all tasks to finish
+                    await seed_queue.join()
 
-                # shut down workers
-                for worker in workers:
-                    worker.cancel()
-                
+                    # shut down workers
+                    for worker in workers:
+                        worker.cancel()
+                    
         print(f'ALL CRAWLING TASKS FINISHED')
-        # clear old queues
 
     @classmethod
-    async def crawler(cls, worker_id: int, client: httpx.AsyncClient, seed_queue: asyncio.Queue, crawl_queue: asyncio.Queue):
+    async def crawler(cls, worker_id: int, client: httpx.AsyncClient, seed_queue: asyncio.Queue, crawl_queue: asyncio.Queue, pbar):
         print(f'Initializing crawler number: {worker_id}')
         while True:
 
@@ -74,46 +76,50 @@ class ScrapingPipeline(ABC):
                 # save crawl nodes to crawl_queue
                 for node in crawl_nodes:
                     await crawl_queue.put(node)               
+            except ValidationError as v:
+                ...
             except Exception as e:
                 print(f"💥 Unexpected parsing error at {url}: {type(e).__name__} -> {e}")
             finally:
                 # task done
                 seed_queue.task_done()
+                pbar.update(1)
 
     @classmethod
     async def run_scrape_pipeline(cls, table: lancedb.Table, crawl_queue: asyncio.Queue, scrape_queue: asyncio.Queue, origin: str, num_scrapers: int = 20):
         # task group of scrapers, and saver 
-        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True, max_redirects=3) as client:
-            async with asyncio.TaskGroup() as tg:
-                print('INITIALIZING SCRAPERS')
-                scrapers = [tg.create_task(cls.scraper(i, client, crawl_queue, scrape_queue, origin)) for i in range(1, num_scrapers + 1)]
-                print('INITIALIZING SAVER')
-                saver = tg.create_task(cls.saver(table, scrape_queue))
+        with tqdm(total=crawl_queue.qsize(), desc='SCRAPING PAGES', unit='url') as pbar:
+            async with httpx.AsyncClient(timeout=15.0, follow_redirects=True, max_redirects=3) as client:
+                async with asyncio.TaskGroup() as tg:
+                    print('INITIALIZING SCRAPERS')
+                    scrapers = [tg.create_task(cls.scraper(i, client, crawl_queue, scrape_queue, origin, pbar)) for i in range(1, num_scrapers + 1)]
+                    print('INITIALIZING SAVER')
+                    saver = tg.create_task(cls.saver(table, scrape_queue))
 
-                # check for all scrape tasks to finish
-                await crawl_queue.join()
+                    # check for all scrape tasks to finish
+                    await crawl_queue.join()
 
-                # clear scrapers 
-                for scraper in scrapers:
-                    scraper.cancel()
+                    # clear scrapers 
+                    for scraper in scrapers:
+                        scraper.cancel()
 
-                # none stopper
-                await scrape_queue.put(None)
+                    # none stopper
+                    await scrape_queue.put(None)
 
-                # check for all save tasks to finish
-                await scrape_queue.join()
+                    # check for all save tasks to finish
+                    await scrape_queue.join()
 
-                # force save
+                    # force save
 
-                # clear saver
-                saver.cancel()
+                    # clear saver
+                    saver.cancel()
 
         # clear old queues/data
         print(f'FINISHED SCRAPING AND SAVING')
         ...
 
     @classmethod
-    async def scraper(cls, worker_id: int, client: httpx.AsyncClient, crawl_queue: asyncio.Queue, scrape_queue: asyncio.Queue, origin: str,  SCRAPED_MAX_SIZE: int = 5000):
+    async def scraper(cls, worker_id: int, client: httpx.AsyncClient, crawl_queue: asyncio.Queue, scrape_queue: asyncio.Queue, origin: str, pbar, SCRAPED_MAX_SIZE: int = 5000):
         print(f'initializing scraper number {worker_id}')
         while True:
             # check scrape size, if too full wait until saver flushes it
@@ -134,11 +140,13 @@ class ScrapingPipeline(ABC):
                 # add to scrape_queue
                 for content in contents:
                     await scrape_queue.put(content)
-
+            except ValidationError as v:
+                ...
             except Exception as e:
                 print(f"💥 Unexpected parsing error at {url}: {type(e).__name__} -> {e}")
             finally:
                 crawl_queue.task_done()
+                pbar.update(1)
             
         ...
 
@@ -155,6 +163,7 @@ class ScrapingPipeline(ABC):
             response = await client.get(url, headers=headers)
             if response.status_code not in [200, 301, 303]: 
                 print(response.status_code)
+
 
             # get text
             html = response.text
