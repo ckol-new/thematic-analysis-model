@@ -60,13 +60,12 @@ class EmbeddingPipeline:
 
 
     @classmethod
-    def run_embedding_pipeline(cls, stbl: Table, model: SentenceTransformer, EMBED_BATCH_SIZE: int = 1000):
+    def run_embedding_pipeline(cls, stbl: Table, model: SentenceTransformer, READ_CHUNK_SIZE: int = 50000, EMBED_BATCH_SIZE: int = 4096):
         total = stbl.count_rows(filter="is_embedded = false")
         pbar = tqdm(total=total, desc='EMBEDDING', unit='sentence')
         while True:
             # get sentence batch
-            batch_df = stbl.search().where('is_embedded = false').limit(EMBED_BATCH_SIZE).select(['sentence', 'sentence_uuid']).to_pandas()
-            pbar.update(batch_df.shape[0])
+            batch_df = stbl.search().where('is_embedded = false').limit(READ_CHUNK_SIZE).select(['sentence', 'sentence_uuid']).to_pandas()
 
             # check to break loop
             if batch_df.empty:
@@ -77,26 +76,21 @@ class EmbeddingPipeline:
             uuids = batch_df['sentence_uuid'].to_list()
             del batch_df
 
+            for i in range(0, len(docs), EMBED_BATCH_SIZE):
+                # embed batch
+                embeddings = model.encode(docs[i:i+EMBED_BATCH_SIZE])
 
-            # embed batch
-            embeddings = model.encode(docs)
-            del docs
+                # save to db
+                payload = [{'sentence_uuid': s_uuid, 'vector': vec, 'is_embedded': True} for s_uuid, vec in zip(uuids[i:i+EMBED_BATCH_SIZE], embeddings)]
+                (
+                    stbl.merge_insert(on='sentence_uuid')
+                    .when_matched_update_all()
+                    .execute(payload)
+                )
 
-            # save to db
-            payload = [{'sentence_uuid': s_uuid, 'vector': vec} for s_uuid, vec in zip(uuids, embeddings)]
-            (
-                stbl.merge_insert(on='sentence_uuid')
-                .when_matched_update_all()
-                .execute(payload)
-            )
-            
-            # update flags
-            upsert_dict = [{'sentence_uuid': s_uuid, 'is_embedded': True} for s_uuid in uuids]
-            (
-                stbl.merge_insert(on='sentence_uuid')
-                .when_matched_update_all()
-                .execute(upsert_dict)
-            )
+                pbar.update(len(embeddings))
+                
+
 
 
 

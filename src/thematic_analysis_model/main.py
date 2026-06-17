@@ -147,7 +147,14 @@ AllALZConnected = [
     }
 ]
 '''
+def main1():
+    db = lancedb.connect('database')
 
+    tbl = db.open_table('content')
+    stbl = db.open_table('sentence')
+
+    print(tbl.count_rows())
+    print(stbl.count_rows())
 
 def main():
     db = lancedb.connect('database')
@@ -165,7 +172,7 @@ def main():
     print(tbl.count_rows())
     print(stbl.count_rows())
 
-    model = SentenceTransformer('all-MiniLM-L6-v2')
+    model = SentenceTransformer('all-MiniLM-L6-v2', device='mps')
     ep = EmbeddingPipeline()
     ep.run_embedding_pipeline(
         stbl, model
