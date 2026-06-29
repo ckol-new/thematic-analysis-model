@@ -1,130 +1,137 @@
 from lancedb import Table
-from pathlib import Path
-from lancedb.permutation import permutation_builder
-from lancedb.permutation import Permutation
-from torch.utils.data import DataLoader
+import gc
+import random
 from bertopic import BERTopic
-from tqdm import tqdm
+from pathlib import Path
+import copy
+import tqdm
+import numpy as np
 
 
-# main modelling class
-class TopicModeller():
+class TopicModeller:
     def __init__(self):
         ...
-    
-    # run pipeline
-    @classmethod
-    def run_pipeline(cls, table: Table, save_model_path: Path, topic_model: BERTopic | None = None, load_model_path: Path | None = None, BATCH_SIZE: int = 50000, SAVE_INTERVAL: int = 10):
-        # shuffle and get batches
-        batch_generator = cls.shuffle_into_batch_generator(table, BATCH_SIZE=BATCH_SIZE)
 
-        # check if you have to load model
-        new_model: bool = False
-        if load_model_path:
-            topic_model = BERTopic.load(load_model_path)
-        elif not topic_model:
-            print('Failed to load model, or you failed to pass model')
-            return
+    @classmethod
+    def run_pipeline(cls, tbl: Table, spath: Path, model: BERTopic | None = None, SHUFFLE_BATCH_SIZE: int = 1024, MODEL_BATCH_SIZE: int = 50000, SAVE_INTERVAL: int = 20):
+        if not model:
+            model = cls.load_model(spath)
         else:
-            new_model = True # signals that this is a completely fresh model
+            model = model
 
-        # process batches
-        count: int = 0
-        total = table.count_rows(filter="is_modelled = false")
-        pbar = tqdm(total=total, desc='MODELLING', unit='batch')
+        # get rows and shuffle
+        shuffled_rows: list[int] = cls.shuffle(tbl)
 
-        for batch in batch_generator:
-            # if firt batch, need to .fit()
-            if new_model is True:
-                topic_model = cls.model_first_batch(batch, topic_model)
-                new_model = False # set to false for next time
-            else:
-                topic_model = cls.model_batch(table, batch, topic_model)
+        # load as batches
+        current_embeddings = []
+        current_documents = []
+        current_ids = []
+        total = tbl.count_rows(filter='is_modelled = false')
+        pbar = tqdm.tqdm(desc='MODELLING', total=total, unit='sentence')
+        sub_models = []
+        for shuffled_batch in cls.batch_generator(tbl, shuffled_rows, SHUFFLE_BATCH_SIZE):
+            # add to current batch
+            current_documents.extend(shuffled_batch['sentence'].to_list())
+            current_embeddings.extend(shuffled_batch['vector'].to_list())
+            current_ids.extend(shuffled_batch['sentence_uuid'].to_list())
 
-            count += 1
-            pbar.update(BATCH_SIZE)
+            del shuffled_batch
+            gc.collect()
 
-            if count % SAVE_INTERVAL == 0:
-                topic_model.save(save_model_path, serialization='safetensors', save_embedding_model='all-MiniLM-L6-v2', save_ctfidf=True)
+            # check if time to do batch
+            if len(current_ids) >= MODEL_BATCH_SIZE:
+                # model
+                sub_model = copy.deepcopy(model)
+                sub_model = cls.fit_model(tbl, sub_model, current_ids, current_embeddings, current_documents) # fit model and update flags
+                sub_models.append(sub_model)
 
+                pbar.update(len(current_ids))
 
-        # final save
-        topic_model.save(save_model_path, serialization='safetensors', save_embedding_model='all-MiniLM-L6-v2', save_ctfidf=True)
+                # clear current batch
+                current_documents.clear()
+                current_embeddings.clear()
+                current_ids.clear()
 
+            
+            # check if time to merge and save
+            if len(sub_models) >= SAVE_INTERVAL:
+                merged_model = BERTopic.merge_models(sub_models)
+                sub_models.clear()
+                sub_models.append(merged_model)
+                # save merged model (save progress)
+                cls.save_model(spath, merged_model)
 
-    # get shuffled batches
-    @classmethod
-    def shuffle_into_batch_generator(cls, table: Table, BATCH_SIZE: int):
-        # get permutation table
-        permutation_tbl = (
-            permutation_builder(table)
-            .filter("is_modelled = false")
-            .shuffle()
-            .execute()
-        )
+        pbar.close()
 
-        # get permutation
-        permutation = (
-            Permutation.from_tables(table, permutation_table=permutation_tbl)
-            .select_columns(['sentence_hash', 'sentence', 'vector'])
-            .with_format('arrow')
-        )
+        # check if still current things to model
+        if len(current_ids) != 0:
+                # model
+                sub_model = copy.deepcopy(model)
+                sub_model = cls.fit_model(tbl, sub_model, current_ids, current_embeddings, current_documents) # fit model and update flags
+                sub_models.append(sub_model)
+
+                # clear current batch
+                current_documents.clear()
+                current_embeddings.clear()
+                current_ids.clear()
         
-        # get torch data loader
-        loader = DataLoader(
-            permutation,
-            batch_size=BATCH_SIZE,
-            collate_fn=lambda x: x
-        )
-
-        return loader
-        
-        ...
-
+        # check if there is anything that needs to be merged first
+        if len(sub_models) != 1:
+            merged_model = BERTopic.merge_models(sub_models)
+            del sub_models
+            gc.collect()
+            return merged_model
+        else:
+            return sub_models[0] # return merged_model in first position
 
     @classmethod
-    def model_first_batch(cls, table, batch, topic_model: BERTopic):
-        # get docs, get embeddings
-        ids = batch['sentence_hash'].to_pylist()
-        docs = batch['sentence'].to_pylist()
-        embeddings = batch['vector'].to_pylist()
-
-        # update model
-        topic_model.fit(docs, embeddings=embeddings)
-
-        # update flags
-        cls.update_flags(table, ids)
-
-        return topic_model
-
-    # model batch
+    def shuffle(cls, tbl: Table) -> list[int]:
+        row_ids = tbl.search().where('is_modelled = false').with_row_id(True).select(['sentence_uuid']).to_arrow()
+        ids = row_ids['_rowid'].to_pylist()
+        random.shuffle(ids)
+        return ids
+    
     @classmethod
-    def model_batch(cls, table, batch, topic_model: BERTopic):
-        # get docs, get embeddings
-        ids = batch['sentence_hash'].to_pylist()
-        docs = batch['sentence'].to_pylist()
-        embeddings = batch['vector'].to_pylist()
+    def batch_generator(cls, tbl: Table, ids: list[int], SHUFFLE_BATCH_SIZE: int = 1024):
+        total = tbl.count_rows(filter='is_modelled = false')
+        for i in range(0, total, SHUFFLE_BATCH_SIZE):
+            batch_ids = ids[i:i+SHUFFLE_BATCH_SIZE]
+            batch = tbl.take_row_ids(batch_ids).to_pandas()
+            yield batch
 
-        # update model
-        topic_model.partial_fit(docs, embeddings)
-
-        # update flags
-        cls.update_flags(table, ids)
-
-        return topic_model
-        ...
+            del batch_ids, batch
+            gc.collect()
 
     @classmethod
-    def update_flags(cls, table: Table, ids):
+    def fit_model(cls, tbl: Table, model: BERTopic, ids, embeddings, sentences):
+        model.fit(documents=sentences, embeddings=np.array(embeddings))
+
+        # update boolean flags
         upsert_dict = [
             {
-                'sentence_hash': my_id,
+                'sentence_uuid': my_uuid,
                 'is_modelled': True
-            } for my_id in ids
+            } for my_uuid in ids
         ]
-
         (
-            table.merge_insert(on='sentence_hash')
+            tbl.merge_insert(on='sentence_uuid')
             .when_matched_update_all()
             .execute(upsert_dict)
+        )
+
+        return model
+
+    @classmethod
+    def save_model(cls, spath: Path, model: BERTopic):
+        model.save(spath, serialization='pickle', save_embedding_model=True, save_ctfidf=True)
+
+    @classmethod
+    def load_model(cls, spath: Path):
+        model = BERTopic.load(spath)
+        return model
+        
+    @classmethod
+    def reset_flags(cls, tbl: Table):
+        tbl.update(
+            values_sql={"is_modelled": "false"}
         )

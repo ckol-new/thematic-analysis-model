@@ -13,3 +13,8 @@ DS_Store
 lance_db/
 .database/
 database/
+.split_db/
+split_db/
+.test_db/
+test_db/
+
