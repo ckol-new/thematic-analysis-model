@@ -32,9 +32,3 @@ class SchemaSentence(LanceModel):
     is_embedded: bool = False
     is_modelled: bool  = False
 
-# dataclass acting as view for document for validaiton purposes.
-class DocumentTracker(BaseModel):
-    doc_id: int
-    doc_uuid: str # hexdigit uuid
-    topic: int | None
-    probs: list | None
