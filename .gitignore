@@ -18,3 +18,4 @@ split_db/
 .test_db/
 test_db/
 
+.vscode/
