@@ -4,6 +4,7 @@
 
 # Basic constants
 EMBEDDING_MODEL_NAME = 'all-MiniLM-L6-v2'
+EMBEDDING_DIMENSIONS = 384
 
 
 # Batch Size Defaults: expeirmentally derived, alter these to test for speed.
