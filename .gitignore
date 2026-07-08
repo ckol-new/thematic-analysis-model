@@ -17,5 +17,6 @@ database/
 split_db/
 .test_db/
 test_db/
+lancedatabase/
 
 .vscode/

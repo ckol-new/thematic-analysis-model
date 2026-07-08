@@ -8,7 +8,7 @@ class ContentType(Enum):
     COMMENT = 1
 
 # dataclass for content (either post or comment), as close to its native context as possible
-class Content:
+class Content(LanceModel):
     text: str
     url: str
     date: str
@@ -21,7 +21,7 @@ class Content:
     is_processed: bool = False
 
 # dataclass for individual line of post/comment, with all necessary metadata
-class Line:
+class Line(LanceModel):
     line: str
     url: str
     date: str
@@ -39,16 +39,14 @@ class Line:
     
 
 # dataclass for configuration parameters of a given trial of the pipeline
-class TrialConfig:
+class TrialConfig(BaseModel):
     ...
 
 # dataclass for the validation metrics of the topic model, for easy serialization.
-class ValidationMetrics:
+class ValidationMetrics(BaseModel):
     ...
 
 
 # adapters
-content_adapter = TypeAdapter(Content)
-line_adapter = TypeAdapter(Line)
 trial_config_adapter = TypeAdapter(TrialConfig)
 validation_metrics_adapter = TypeAdapter(ValidationMetrics)

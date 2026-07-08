@@ -1,6 +1,12 @@
 # config file for global vars, things I want to keep constant
 # basically everything will import from here.
 # note this is separate from TrialConfig, which is a dataclass to store the config of a given trial 
+from pathlib import Path
+
+# basic file paths and names
+LANCE_PATH: Path = Path.cwd() / 'lancedatabase'
+CONTENT_TBL_NAME = 'content'
+LINE_TBL_NAME = 'lines'
 
 # Basic constants
 EMBEDDING_MODEL_NAME = 'all-MiniLM-L6-v2'

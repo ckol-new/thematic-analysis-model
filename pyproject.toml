@@ -19,3 +19,6 @@ dependencies = [
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[project.scripts]
+start = "thematic_analysis_model.main:main"
