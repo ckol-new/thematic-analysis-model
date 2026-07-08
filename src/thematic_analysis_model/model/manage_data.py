@@ -10,11 +10,13 @@ class Loader:
         self.tbl1_name = tbl1_name
         self.tbl2_name = tbl2_name
     
+    # creates table with schema 
     def first_init(self, schema1: type, schema2: type):
         db = lancedb.connect(self.lance_path)
         tbl1 = db.create_table(name=self.tbl1_name, schema=schema1)
         tbl2 = db.create_table(name=self.tbl2_name, schema=schema2)
     
+    # opens table
     def connect(self):
         db = lancedb.connect(self.lance_path)
         tbl1 = db.open_table(name=self.tbl1_name)
