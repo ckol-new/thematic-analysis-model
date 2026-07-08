@@ -1,6 +1,5 @@
 from ..config import EMBEDDING_DIMENSIONS
 from lancedb.pydantic import LanceModel, Vector
-from
 from pydantic import BaseModel, TypeAdapter
 from enum import Enum
 

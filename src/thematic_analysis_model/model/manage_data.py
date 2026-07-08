@@ -2,6 +2,7 @@
 from pathlib import Path
 import lancedb
 from .dclasses import Line, Content
+from datetime import timedelta
 
 # methods around loading the database
 class Loader:
@@ -29,4 +30,49 @@ class Processor:
 
 # methods around pruning, cleaning, and diagnosing the corpus
 class CorpusManager:
-    ...
+    def __init__(self, tbl1: lancedb.Table, tbl2: lancedb.Table):
+        self.tbl1 = tbl1
+        self.tbl2 = tbl2
+
+    # reset validation flags
+    def reset_validation_bool_flags(self):
+        self.tbl2.update(values_sql={
+        'is_validated': 'cast(false as boolean)'
+        })
+    
+    # reset modelling + validation flags(self):
+    def reset_modelling_bool_flags(self):
+        self.tbl2.update(values_sql={
+        'is_modelled': 'cast(false as boolean)'
+        })
+        self.reset_validation_bool_flags()
+
+    # reset embedding + modelling + validating flags   
+    def reset_embedding_bool_flags(self):
+        self.tbl2.update(values_sql={
+            'is_embedded': 'cat(false as boolean)'
+        })
+        self.reset_modelling_bool_flags()
+
+    # reset processing flags
+    def reset_processing_flags(self):
+        self.tbl1.update(values_sql={
+            'is_processed': 'cat(false as boolean)'
+        })
+        self.reset_embedding_bool_flags()
+    
+    # clean lancedb size: reduces size of lancedb
+    def clean_lancedb(self, days: int = 0):
+        # compact data
+        self.tbl1.compact_files()
+        self.tbl2.compact_files()
+
+        # clean old versioning
+        self.tbl1.cleanup_old_versions(
+            older_than=timedelta(days=days),
+            delete_unverified=True
+        )
+        self.tbl2.cleanup_old_versions(
+            older_than=timedelta(days=days),
+            delete_unverified=True
+        )
