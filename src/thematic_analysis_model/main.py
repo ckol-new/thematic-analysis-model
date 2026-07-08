@@ -10,6 +10,7 @@ os.environ["DATAFUSION_RUNTIME_MEMORY_LIMIT"] = "4G"
 os.environ["DATAFUSION_EXECUTION_SORT_SPILL_RESERVATION_BYTES"] = str(512 * 1024 * 1024)  # 512 MB
 
 import lancedb
+import pyarrow as pa
 from pathlib import Path
 from thematic_analysis_model.model.dclasses import SchemaContent, SchemaSentence
 from thematic_analysis_model.model.scraping_pipeline import ScrapingPipeline, ALZConnectedScrapingPipeline, AlzSocietyDementiaSupportForum
@@ -28,13 +29,14 @@ from bertopic.vectorizers import OnlineCountVectorizer
 embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
 umap_model = UMAP()
 minibatchkmeans_model = MiniBatchKMeans()
-hdbscan_model = HDBSCAN()
+hdbscan_model = HDBSCAN(min_cluster_size=20, min_samples=15)
 count_vectorizer = OnlineCountVectorizer(stop_words='english')
 topic_model = BERTopic(
     embedding_model=embedding_model,
     umap_model=umap_model,
     hdbscan_model=hdbscan_model,
-    vectorizer_model=count_vectorizer
+    vectorizer_model=count_vectorizer,
+    calculate_probabilities=True
 )
 
 def main():
@@ -101,7 +103,6 @@ def main1():
         print(f"PROCESSING {forum['origin']}")
         asyncio.run(
             forum['scraper'].run_pipeline(
-                seeds=forum['seeds'],
                 table=tbl,
                 origin=forum['origin']
             )
@@ -116,9 +117,19 @@ def main1():
     print(tbl.count_rows())
     print(stbl.count_rows())
 
+def main2():
+    db = lancedb.connect('database')
+
+    tbl = db.open_table('content')
+    stbl = db.open_table('sentence')
+
+    stbl.alter_columns({
+        'path': 'new_list_col',
+        'rename': 'probabilities'
+    })
 
 
-    
+    print(stbl.schema)
 
 
 

@@ -32,3 +32,10 @@ class SchemaSentence(LanceModel):
     is_embedded: bool = False
     is_modelled: bool  = False
 
+class ValidationMetricsView(BaseModel):
+    trial_num: int
+    trial_id: str
+    score_NPMI: float | None
+    score_UMass: float | None
+    prob_distribution: any
+
