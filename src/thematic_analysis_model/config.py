@@ -11,6 +11,8 @@ LINE_TBL_NAME = 'lines'
 # Basic constants
 EMBEDDING_MODEL_NAME = 'all-MiniLM-L6-v2'
 EMBEDDING_DIMENSIONS = 384
+NUMBER_OF_CRAWLERS = 20
+NUMBER_OF_SCRAPERS = 20
 
 
 # Batch Size Defaults: expeirmentally derived, alter these to test for speed.

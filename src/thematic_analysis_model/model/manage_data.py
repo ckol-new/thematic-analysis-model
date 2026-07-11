@@ -3,6 +3,7 @@ from pathlib import Path
 import lancedb
 from .dclasses import Line, Content
 from datetime import timedelta
+import codecs
 
 # methods around loading the database
 class Loader:
@@ -14,8 +15,8 @@ class Loader:
     # creates table with schema 
     def first_init(self, schema1: type, schema2: type):
         db = lancedb.connect(self.lance_path)
-        tbl1 = db.create_table(name=self.tbl1_name, schema=schema1)
-        tbl2 = db.create_table(name=self.tbl2_name, schema=schema2)
+        tbl1 = db.create_table(name=self.tbl1_name, schema=schema1, mode='overwrite')
+        tbl2 = db.create_table(name=self.tbl2_name, schema=schema2, mode='overwrite')
     
     # opens table
     def connect(self):
@@ -26,7 +27,22 @@ class Loader:
 
 # methods for processing text, and splitting to sentences
 class Processor:
-    ...
+    @classmethod
+    def clean_text(cls, text: str) -> str:
+        if not text:
+            return None
+        # two step decoding for double escape
+        try:
+            text = codecs.decode(text, 'unicode-escape') 
+        except:
+            pass
+        for i in range(2):
+            try:
+                text = text.encode('latin-1').decode('utf-8')
+            except (UnicodeEncodeError, UnicodeDecodeError):
+                break
+            
+        return text 
 
 # methods around pruning, cleaning, and diagnosing the corpus
 class CorpusManager:

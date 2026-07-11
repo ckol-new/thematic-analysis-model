@@ -3,9 +3,9 @@ from lancedb.pydantic import LanceModel, Vector
 from pydantic import BaseModel, TypeAdapter
 from enum import Enum
 
-class ContentType(Enum):
-    POST = 1
-    COMMENT = 1
+class ContentType(str, Enum):
+    POST = 'post'
+    COMMENT = 'comment'
 
 # dataclass for content (either post or comment), as close to its native context as possible
 class Content(LanceModel):
@@ -17,6 +17,8 @@ class Content(LanceModel):
     forum_origin: str
     hash_: str
     uuid: str
+    parent_uuid: str | None
+    date_accessed: str
     type_: ContentType
     is_processed: bool = False
 
@@ -28,7 +30,7 @@ class Line(LanceModel):
     forum_origin: str
     content_origin_uuid: str
     uuid: str
-    hash_: str
+    hash_: str # url hash
     type_: ContentType
     vector: Vector(dim=EMBEDDING_DIMENSIONS) | None = None
     is_embedded: bool = False
