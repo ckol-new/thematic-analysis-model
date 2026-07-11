@@ -149,6 +149,13 @@ class Crawler:
                 self.seed_queue.task_done()
                 self.pbar.update(1)
 
+    @classmethod
+    def seed_generator(cls, prefix: str, start: int, stop: int, suffix: str):
+        seeds = [
+            str(prefix) + str(i) + str(suffix) for i in range(start, stop+1)
+        ]
+        return seeds
+
 # scrape each valid post/page/discussion/thread.
 class Scraper:
     def __init__(self, tbl: lancedb.Table, forum_name: str, crawl_queue: asyncio.Queue, scrape_func,  num_scrapers: int = 20):
@@ -223,7 +230,7 @@ class Scraper:
                 self.crawl_queue.task_done()
                 self.pbar.update(1)
             
-    async def async_saver(self, SAVE_BATCH_SIZE: int = 1000):
+    async def async_saver(self, SAVE_BATCH_SIZE: int = 25002500):
         # init
         print(f"initializing saver")       
 
@@ -243,7 +250,6 @@ class Scraper:
                     )
                 except Exception as e:
                     print(f"💥 Save failed on batch: {type(e).__name__} -> {e}")
-
                 save_batch.clear()
                 deduplicated_batch.clear()
                 self.scrape_queue.task_done()
@@ -255,7 +261,7 @@ class Scraper:
             # if save batch is full, save to lancedb
             if len(save_batch) >= SAVE_BATCH_SIZE:
                 # in memory de-duplication
-                deduplicated_batch = list({obj.url_hash: obj for obj in save_batch}.values())
+                deduplicated_batch = list({obj.hash_: obj for obj in save_batch}.values())
                 # save to lancedb
                 try:
                     (
@@ -268,12 +274,12 @@ class Scraper:
 
                 save_batch.clear()
                 deduplicated_batch.clear()
-                self.scrape_queue.task_done()
+                # self.scrape_queue.task_done()
         
         # Save if batch not empty
         if len(save_batch) != 0:
             # in memory de-duplication
-            deduplicated_batch = list({obj.url_hash: obj for obj in save_batch}.values())
+            deduplicated_batch = list({obj.hash_: obj for obj in save_batch}.values())
             # save to lancedb
             try:
                 (
@@ -286,7 +292,7 @@ class Scraper:
 
             save_batch.clear()
             deduplicated_batch.clear()
-            self.scrape_queue.task_done()
+            # self.scrape_queue.task_done()
             
 
 # extensions of ScrapingPipelineWrapper
@@ -450,7 +456,6 @@ class DementiaSupportForumScrapingPipeline(ScrapingPipelineWrapper):
      # crawl page
     @classmethod
     def crawl(cls, soup: BeautifulSoup) -> list[str]:
-        print('crawl func called')
         links = set()
         list_a = soup.find_all('a')
         if not list_a: return []

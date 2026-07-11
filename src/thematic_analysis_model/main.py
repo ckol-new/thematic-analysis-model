@@ -1,7 +1,7 @@
 import asyncio
 from thematic_analysis_model.config import *
 from thematic_analysis_model.model.manage_data import Loader, CorpusManager
-from thematic_analysis_model.model.scraping import ALZConnectedScrapingPipeline, DementiaSupportForumScrapingPipeline
+from thematic_analysis_model.model.scraping import ALZConnectedScrapingPipeline, DementiaSupportForumScrapingPipeline, Crawler
 from thematic_analysis_model.model.dclasses import Line, Content
 
 import pprint
@@ -17,24 +17,16 @@ def main():
     db, ptbl, ltbl = loader.connect()
     print(ptbl.count_rows())
 
-    seeds = [
-        'https://forum.alzheimers.org.uk/forums/i-have-dementia.56/page-1',
-        'https://forum.alzheimers.org.uk/forums/i-have-dementia.56/page-2',
-        'https://forum.alzheimers.org.uk/forums/i-have-dementia.56/page-3'
-    ]
 
-    scraping_pipeline = DementiaSupportForumScrapingPipeline(
-        tbl=ptbl,
-        seeds=seeds,
-        forum_name='DementiaSupportForum_Ihavedementia'
-    )
-    asyncio.run(scraping_pipeline.run_pipeline())
-    print(ptbl.count_rows())
-    print(ptbl.count_rows(filter='title IS NULL'))
-    df = ptbl.search().where('title IS NULL').select(['url', 'title']).to_pandas()
-    print(df.head())
+
+    
 
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except* Exception as eg:
+        for exc in eg.exceptions:
+            import traceback
+            traceback.print_exception(type(exc), exc, exc.__traceback__)

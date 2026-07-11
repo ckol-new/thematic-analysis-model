@@ -4,16 +4,19 @@ from ..config import *
 
 # utility functions
 
+# get rowids by condition
+def get_ids_by_condition(tbl: lancedb.Table, query: str | None = None) -> list[int]:
+    if not query:
+        ids = tbl.search().with_row_id(True).select(['_rowid']).to_arrow()['_rowid'].to_pylist()
+    else:
+        ids = tbl.search().where(query).with_row_id(True).select(['_rowid']).to_arrow()['_rowid'].to_pylist()
+
+    return ids
+
 # for a given query condition, shuffle integer _rowids from database that meets that condition
 # return list of ids, shuffled by condition
 #   if query = None, shuffle entire table
-def shuffle_by_condition(tbl: lancedb.Table, query: str | None) -> list[int]:
-    # query _rowid by condition
-    if not query:
-        ids = tbl.search().with_row_id(True).select(['_rowid']).to_arrow()['_rowid'].to_pylist()
-    else: 
-        ids = tbl.search().where(query).with_row_id(True).select(['_rowid']).to_arrow()['_rowid'].to_pylist()
-
+def shuffle_ids(ids: list[int]) -> list[int]:
     # shuffle
     random.shuffle(ids)
     
