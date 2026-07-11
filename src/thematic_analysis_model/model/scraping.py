@@ -216,7 +216,7 @@ class Scraper:
 
                 [self.scrape_queue.put_nowait(content) for content in contents if contents ]
             except ValidationError as v:
-                ...
+                print(f'Validation error at {crawl_node}: {type(v).__name__} -> {v}')
             except Exception as e:
                 print(f"💥 Unexpected parsing error at {crawl_node}: {type(e).__name__} -> {e}")
             finally:
@@ -439,7 +439,166 @@ class ALZConnectedScrapingPipeline(ScrapingPipelineWrapper):
     def scrape_title(cls, soup: BeautifulSoup):
         title = soup.find('title')
         if not title:
-            print(1)
             return None
 
+        return title.get_text()
+
+class DementiaSupportForumScrapingPipeline(ScrapingPipelineWrapper):
+    def __init__(self, tbl: lancedb.Table, forum_name: str, seeds: list[str], num_crawlers: int = NUMBER_OF_CRAWLERS, num_scrapers: int = NUMBER_OF_SCRAPERS):
+        super().__init__(tbl=tbl, forum_name=forum_name, seeds=seeds, num_crawlers=num_crawlers, num_scrapers=num_scrapers)
+
+     # crawl page
+    @classmethod
+    def crawl(cls, soup: BeautifulSoup) -> list[str]:
+        print('crawl func called')
+        links = set()
+        list_a = soup.find_all('a')
+        if not list_a: return []
+        for link in list_a:
+            href = link.get('href')
+            if not href: continue
+            if '/threads/' in href:
+                if href.startswith('https'):
+                    links.add(href)
+                else: 
+                    l = 'https://forum.alzheimers.org.uk' + href
+                    links.add(l)
+
+        if len(list(links)) == 0: return []
+        return list(links)
+
+    @classmethod
+    def scrape(cls, soup: BeautifulSoup, url: str, origin: str) -> list[Content]:
+        # get post
+        post: Content= cls.scrape_post(soup, url, origin)
+        if not post:
+            return []
+
+        parent_uuid: str = post.uuid
+
+        # get comments
+        comments: list[Content] = []
+        comment_div_list = soup.find_all('article', class_='message--post')
+        for comment_div in comment_div_list:
+            # if not comment_div: continue
+            comment: Content= cls.scrape_comment(comment_div, url, parent_uuid, origin)
+            comments.append(comment)
+
+        # return list concat
+        return [post] + comments
+    
+    @classmethod
+    def scrape_post(cls, soup: BeautifulSoup, url: str, origin: str) -> Content:
+        # get post div
+        post_div = soup.find('article', class_='message-threadStarterPost')
+        if not post_div: return None
+
+        # get content
+        content = cls.scrape_content(post_div)
+
+        # get date
+        date: str = cls.scrape_date(post_div)
+
+        # get author name
+        username: str = cls.scrape_username(post_div)
+        
+        # misc
+        url_hash: str = xxhash.xxh64(url).hexdigest()
+        date_accessed: str = str(datetime.date.today())
+        my_uuid: str = str(uuid.uuid4())
+        origin: str = origin
+        title: str = cls.scrape_title(soup)
+
+        # validate essentials (metadata + content)
+        content: Content = Content(
+            text=content,
+            url=url,
+            date=date,
+            title=title,
+            author_username=username,
+            forum_origin=origin,
+            hash_=url_hash,
+            uuid=my_uuid,
+            parent_uuid=None,
+            date_accessed=date_accessed,
+            type_=ContentType.POST,
+            is_processed=False
+        )
+
+        return content
+
+    @classmethod
+    def scrape_comment(cls, soup: BeautifulSoup, url: str, parent_uuid: str, origin: str) -> Content:
+
+        # get content
+        content = cls.scrape_content(soup)
+
+        # get date
+        date: str = cls.scrape_date(soup)
+
+        # get author name
+        username: str = cls.scrape_username(soup)
+        
+        # misc
+        url_hash: str = xxhash.xxh64(url).hexdigest()
+        date_accessed: str = str(datetime.date.today)
+        my_uuid: str = str(uuid.uuid4())
+        uuid_parent = parent_uuid
+        content_type: str = 'post'
+        origin: str = origin
+        title = None
+
+        # validate essentials (metadata + content)
+        content: Content = Content(
+            text=content,
+            url=url,
+            date=date,
+            title=title,
+            author_username=username,
+            forum_origin=origin,
+            hash_=url_hash,
+            uuid=my_uuid,
+            parent_uuid=uuid_parent,
+            date_accessed=date_accessed,
+            type_=ContentType.COMMENT,
+            is_processed=False
+        )
+
+        return content
+
+    @classmethod
+    def scrape_content(cls, soup: BeautifulSoup) -> str:
+        post_message_div = soup.find('div', class_='bbWrapper')
+
+        # get text
+        text: str = post_message_div.get_text(separator='', strip=True)
+
+        # clean text
+        text: str = Processor.clean_text(text)
+
+        # validate text
+        if not text or len(text) <= 5:
+            return None
+
+        # return text
+        return text
+
+    @classmethod
+    def scrape_date(cls, soup: BeautifulSoup) -> str:
+        time_div = soup.find('time')
+        if not time_div: return None
+        date = time_div.get_text()
+        if not date: return None
+        return str(date)
+
+    @classmethod
+    def scrape_username(cls, soup: BeautifulSoup):
+        username: str = soup.get('data-author')
+        if not username: return None
+        return str(username)
+    
+    @classmethod
+    def scrape_title(cls, soup: BeautifulSoup) -> str:
+        title = soup.find('title')
+        if not title: return None
         return title.get_text()

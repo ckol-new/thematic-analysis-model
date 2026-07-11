@@ -1,7 +1,7 @@
 import asyncio
 from thematic_analysis_model.config import *
 from thematic_analysis_model.model.manage_data import Loader, CorpusManager
-from thematic_analysis_model.model.scraping import ALZConnectedScrapingPipeline
+from thematic_analysis_model.model.scraping import ALZConnectedScrapingPipeline, DementiaSupportForumScrapingPipeline
 from thematic_analysis_model.model.dclasses import Line, Content
 
 import pprint
@@ -18,15 +18,15 @@ def main():
     print(ptbl.count_rows())
 
     seeds = [
-        'https://alzconnected.org/categories/i-have-younger-onset-alzheimers/p1'
-        'https://alzconnected.org/categories/i-have-younger-onset-alzheimers/p2'
-        'https://alzconnected.org/categories/i-have-younger-onset-alzheimers/p3'
+        'https://forum.alzheimers.org.uk/forums/i-have-dementia.56/page-1',
+        'https://forum.alzheimers.org.uk/forums/i-have-dementia.56/page-2',
+        'https://forum.alzheimers.org.uk/forums/i-have-dementia.56/page-3'
     ]
 
-    scraping_pipeline = ALZConnectedScrapingPipeline(
+    scraping_pipeline = DementiaSupportForumScrapingPipeline(
         tbl=ptbl,
         seeds=seeds,
-        forum_name='ALZConnected_EarlyOnset'
+        forum_name='DementiaSupportForum_Ihavedementia'
     )
     asyncio.run(scraping_pipeline.run_pipeline())
     print(ptbl.count_rows())
