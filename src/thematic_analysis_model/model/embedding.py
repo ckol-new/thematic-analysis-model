@@ -38,6 +38,10 @@ class Embedder:
                 # embed batch + save + update bools
                 self.embed_batch(docs=current_docs, uuids=current_uuids)
 
+                pbar.update(len(current_uuids))
+            
+        pbar.close()
+
 
     # embed batch
     def embed_batch(self, docs: list[str], uuids: list[int]):
