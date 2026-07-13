@@ -65,6 +65,10 @@ def main():
 
     Modeller.save_model(merged_model, model_spath)
     '''
+
+    state_manager = CorpusManager(tbl1=ptbl, tbl2=stbl)   
+    state_manager.reset_validation_bool_flags()
+
     merged_model = Modeller.load_model(path=model_spath)
     validator = Validator(
         tbl=stbl,

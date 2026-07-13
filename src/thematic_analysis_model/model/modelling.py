@@ -9,7 +9,7 @@ import gc
 
 from .dclasses import TrialConfig, ValidationMetrics
 from .util import shuffle_ids, batch_generator, get_ids_by_condition
-from ..config import MODELLING_BATCH_SIZE_DEFAULT, EMBEDDING_MODEL_NAME
+from ..config import MODELLING_BATCH_SIZE_DEFAULT, EMBEDDING_MODEL_NAME, FILE_IO_BATCH_SIZE_DEFUALT
 
 from bertopic import BERTopic 
 from sentence_transformers import SentenceTransformer
@@ -120,6 +120,7 @@ class Validator:
         self.transform_model(ids, BATCH_SIZE=BATCH_SIZE)
 
         # get validation metrics
+        self.get_validation_metrics()
         
 
         # serialize validation metrics + figures
@@ -162,20 +163,26 @@ class Validator:
 
         # get pairwise embedding distance
         all_topic_pairwise_distance, pairwise_distance_by_topic = self.get_pairwise_embedding_distance()
+        print(f'topic pairwise embedding distance {all_topic_pairwise_distance}')
 
         # get intertopic cosine similarity
         mean_similarity, max_similarity, redundant_pairs = self.get_intertopic_cosine_similarity()
-
+        print(f'mean similairty: {mean_similarity}')
+        print(f'redundant pairs {len(redundant_pairs)}')
 
         # get topic diversity
+        topic_diversity = self.get_topic_diversity()
+        print(f'topic diversity: {topic_diversity}')
 
         # get probability data
+        noise_ratio, topic_prob_data = self.get_probability_data()
+        print(f'noise ratio: {noise_ratio}')
 
         # get ARI
 
         # get bootstrap resampling stability
 
-        validation_metrics = ValidationMetrics()
+        validation_metrics = None
         return validation_metrics
     
     def get_pairwise_embedding_distance(self):
@@ -238,3 +245,96 @@ class Validator:
 
         return mean_similarity, max_similarity, redundant_pairs 
     
+
+    def get_topic_diversity(self, top_n: int = 10):
+        # get valid topics (no outlier)
+        raw_topics = self.topic_model.get_topics()
+        valid_topics = [
+            [word for word, _ in word_weight_list[:top_n]]
+            for topic_id, word_weight_list in raw_topics.items()
+            if topic_id != -1
+        ]
+        if not valid_topics: return 0.0
+
+        # get all words
+        all_topic_words = []
+        for topic in valid_topics:
+            for word in topic:
+                all_topic_words.append(word)
+
+        # get all unique words
+        unique_topic_words = set(all_topic_words)           
+
+        # compute topic diversity score -> return
+        return float(len(unique_topic_words) / len(all_topic_words))
+
+    # return noise ratio, avg prob per topic, and prob distirbution per topic
+    def get_probability_data(self):
+        model_info = self.topic_model.get_topic_info()
+
+        # seperate outliers from topics
+        outliers_info = model_info[model_info['Topic'] == -1]
+        topics_info = model_info[model_info['Topic'] != -1]
+        topics_info.sort_values(by='Topic') # should put into right order.
+        topics = topics_info['Topic'].tolist()
+        topics_count = topics_info['Count'].tolist()
+
+        # get noise ratio
+        noise_ratio = self.compute_noise_ratio(outliers_info, topics_info)
+
+        # avg prob per topic
+        # prob distribution by topic
+        topic_prob_data: list[dict] = self.compute_probability_per_topic(topics=topics)
+
+        return noise_ratio, topic_prob_data
+
+
+    def compute_noise_ratio(self, outlier_info, topics_info) -> float:
+        topics_count = topics_info['Count'].to_list()
+        topics_doc_num = sum(topics_count)
+        outlier_doc_num = outlier_info['Count'].iloc[0]
+        nr = outlier_doc_num / topics_doc_num
+        return nr
+    
+    def compute_probability_per_topic(self, topics: list[int]):
+        topics_data: list[dict] = []
+        for topic_num in topics:
+            topic_max_prob = []
+            for batch in self.get_probs_by_topic(topic_num=topic_num):
+                # batch shape: (batch_size, n_topics) -> one max per document
+                topic_max_prob.extend(np.max(batch, axis=1).tolist())
+
+            if len(topic_max_prob) > 0:
+                avg_prob = sum(topic_max_prob) / len(topic_max_prob)
+            else:
+                print(f'Error for topic num: {topic_num}')
+                continue
+
+            topics_data.append({
+                'avg_prob': avg_prob,
+                'prob_dist': topic_max_prob
+            })
+
+        return topics_data
+
+    # generator 
+    def get_probs_by_topic(self, topic_num: int, BATCH_SIZE: int = FILE_IO_BATCH_SIZE_DEFUALT):
+        # query ids
+        ids = self.tbl.search().where(f'topic = {topic_num}').with_row_id(True).select(['_rowid']).to_arrow()['_rowid'].to_pylist()
+        total = len(ids)
+
+        # take ids in batches -> return in batches
+        for i in range(0, total, BATCH_SIZE):
+            batch_ids = ids[i:i+BATCH_SIZE]
+            yield np.array(self.tbl.take_row_ids(batch_ids).select(['probabilities']).to_arrow()['probabilities'].to_pylist())
+
+    # generator
+    def get_lines_by_topic(self, topic_num: int, BATCH_SIZE: int = FILE_IO_BATCH_SIZE_DEFUALT):
+        # query ids
+        ids = self.tbl.search().where(f'topic = {topic_num}').with_row_id(True).select(['_rowid']).to_arrow()['_rowid'].to_pylist()
+        total = len(ids)
+
+        # take ids in batches -> return generator of batch
+        for i in range(0, total, BATCH_SIZE):
+            batch_ids = ids[i:i+BATCH_SIZE]
+            yield self.tbl.take_row_ids(batch_ids).to_pandas()
