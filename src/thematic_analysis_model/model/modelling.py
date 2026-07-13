@@ -7,13 +7,19 @@ import copy
 from tqdm import tqdm
 import gc
 
+from .manage_data import CorpusManager
 from .dclasses import TrialConfig, ValidationMetrics
 from .util import shuffle_ids, batch_generator, get_ids_by_condition
 from ..config import MODELLING_BATCH_SIZE_DEFAULT, EMBEDDING_MODEL_NAME, FILE_IO_BATCH_SIZE_DEFUALT
 
+from sentence_transformers import SentenceTransformer
 from bertopic import BERTopic 
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
+from umap import UMAP
+from hdbscan import HDBSCAN
+from sklearn.feature_extraction.text import CountVectorizer
+
 
 class Modeller:
     def __init__(self, tbl: lancedb.Table, topic_model: BERTopic):
@@ -338,3 +344,54 @@ class Validator:
         for i in range(0, total, BATCH_SIZE):
             batch_ids = ids[i:i+BATCH_SIZE]
             yield self.tbl.take_row_ids(batch_ids).to_pandas()
+
+
+class Trial:
+    def __init__(self, trial_config: TrialConfig, tbl: lancedb.Table, corpus_manager: CorpusManager, model_save_path: Path, validation_metric_save_path: Path):
+        self.trial_config = trial_config
+        self.tbl = tbl
+        self.corpus_manager = corpus_manager
+        self.model_save_path = model_save_path
+        self.validation_metric_save_path = validation_metric_save_path
+
+    def run_trial(self):
+        # load models
+        self.load_models()
+
+        # model 
+        self.corpus_manager.reset_modelling_bool_flags()
+        modeller = Modeller(
+            tbl=self.tbl,
+            topic_model=self.topic_model
+        )
+        merged_model = modeller.model()
+        Modeller.save_model(model=merged_model, path=self.model_save_path)
+
+        # validate
+        validator = Validator(
+            tbl=self.tbl,
+            topic_model=self.topic_model,
+            embedding_model=self.embedding_model
+        )
+        validation_metric = validator.validate()
+        
+        # save validation metric
+
+    def load_models(self):
+        self.embedding_model = SentenceTransformer(self.trial_config.embedding_model)
+        self.umap_model = UMAP(
+            n_neighbors=self.trial_config.n_neighbours,
+            n_components=self.trial_config.n_components
+        )
+        self.hdbscan_model = HDBSCAN(
+            min_cluster_size=self.trial_config.min_cluster_size,
+            min_samples=self.trial_config.min_samples
+        )
+        self.vectorizer_model = CountVectorizer()
+        self.topic_model = BERTopic(
+            embedding_model=self.embedding_model,
+            umap_model=self.umap_model,
+            hdbscan_model=self.hdbscan_model,
+            vectorizer_model=self.vectorizer_model,
+            calculate_probabilities=False # for now, change during validation
+        )

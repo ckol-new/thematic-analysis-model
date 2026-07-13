@@ -44,6 +44,10 @@ class Sentence(LanceModel):
 class TrialConfig(BaseModel):
     trial_num: int
     trial_desc: str
+    embedding_model: str
+    n_neighbours: int
+    n_components: int
+    min_cluster_size: int
 
 # dataclass for the validation metrics of the topic model, for easy serialization.
 class ValidationMetrics(BaseModel):
