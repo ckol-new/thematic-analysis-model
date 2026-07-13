@@ -4,6 +4,7 @@ from .dclasses import Sentence, Content
 from .util import get_ids_by_condition, batch_generator, shuffle_ids
 from ..config import FILE_IO_BATCH_SIZE_DEFUALT, MIN_SENTENCE_LEN
 
+from tqdm import tqdm
 import gc
 from pathlib import Path
 from datetime import timedelta
@@ -142,6 +143,41 @@ class Processor:
                 break
             
         return text 
+    
+
+    def post_process(self):
+        ids = self.sentence_tbl.search().with_row_id(True).select(['_rowid']).to_arrow()['_rowid'].to_pylist()
+        sequences = ['https', 'MemberPost']
+        to_remove: list[str] = []
+        pbar = tqdm(total=len(ids), desc='POST_PROCESSING', unit='sentence')
+
+        # batch process
+        for batch in batch_generator(ids=ids, tbl=self.sentence_tbl, columns=['sentence', 'uuid']): 
+            sentences = batch['sentence'].tolist()
+            uuids = batch['uuid'].tolist()
+            for s, u in zip(sentences, uuids, strict=True):
+                # if contains sequences to remove
+                if any(seq in s for seq in sequences):
+                    to_remove.append(u)
+                # if too short
+                if len(s) < MIN_SENTENCE_LEN:
+                    to_remove.append(u)
+        
+        # batch delete
+        DEL_BATCH_SIZE = 500
+        for i in range(0, len(to_remove), DEL_BATCH_SIZE):
+            current_del_batch = to_remove[i:i+DEL_BATCH_SIZE]
+            formatted_ids = ", ".join(f"'{uid}'" for uid in current_del_batch)
+            query = f'uuid IN ({formatted_ids})'
+            self.sentence_tbl.delete(where=query)
+            pbar.update(len(current_del_batch))
+        
+        self.sentence_tbl.compact_files()
+        pbar.close()
+
+
+
+
 
 # methods around pruning, cleaning, and diagnosing the corpus
 class CorpusManager:

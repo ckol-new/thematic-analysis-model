@@ -6,6 +6,8 @@ from thematic_analysis_model.model.embedding import Embedder
 from thematic_analysis_model.model.dclasses import Sentence, Content
 from thematic_analysis_model.model.util import seed_generator
 
+from sentence_transformers import SentenceTransformer
+
 import pprint
 
 def main():
@@ -45,6 +47,24 @@ def main():
     processor.process_content()
     print(stbl.count_rows())
     '''
+
+    '''
+    embed_model = SentenceTransformer('all-MiniLM-L6-v2')
+    embedder = Embedder(
+        tbl=stbl,
+        embed_model=embed_model
+    )
+    embedder.embed()
+    '''
+    processor = Processor(
+        content_tbl=ptbl,
+        sentence_tbl=stbl
+    )
+    processor.post_process()
+
+    sentences = stbl.search().select(['sentence']).to_arrow()['sentence'].to_pylist()
+    pprint.pprint(sentences)
+
 
 
     
