@@ -13,6 +13,7 @@ from ..config import MODELLING_BATCH_SIZE_DEFAULT, EMBEDDING_MODEL_NAME
 
 from bertopic import BERTopic 
 from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
 
 class Modeller:
     def __init__(self, tbl: lancedb.Table, topic_model: BERTopic):
@@ -157,8 +158,42 @@ class Validator:
 
     # return validation metrics
     def get_validation_metrics(self) -> ValidationMetrics:
+        # get NPMI
+
+        # get pairwise embedding distance
+        all_topic_pairwise_distance, pairwise_distance_by_topic = self.get_pairwise_embedding_distance()
+
+        # get intertopic cosine similarity
+
+
+        # get topic diversity
+
+        # get probability data
+
+        # get ARI
+
+        # get bootstrap resampling stability
+
         validation_metrics = ValidationMetrics()
         return validation_metrics
     
-     
-    
+    def get_pairwise_embedding_distance(self):
+        topic_info = self.topic_model.get_topics()
+        topics = [
+            [
+                word for word, _ in topic_info[topic]
+            ] for topic in topic_info if topic != -1
+        ]
+
+        all_topic_scores = [] # pair-wise embedding avg for each topic
+        for topic_words in topics: 
+            topic_embeddings = self.embedding_model.encode(topic_words, device='mps')
+            similarity_matrix = cosine_similarity(topic_embeddings)
+            upper_triangle_indices = np.triu_indices_from(similarity_matrix, k=1)
+            pairwise_scores = similarity_matrix[upper_triangle_indices]
+
+            if len(pairwise_scores) > 0:
+                all_topic_scores.append(np.mean(pairwise_scores)) 
+
+        all_topic_avg = float(np.mean(all_topic_scores)) if all_topic_scores else 0.0
+        return all_topic_avg, all_topic_scores
