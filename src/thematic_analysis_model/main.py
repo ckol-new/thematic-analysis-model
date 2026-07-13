@@ -1,7 +1,8 @@
 import asyncio
 from thematic_analysis_model.config import *
+from thematic_analysis_model.scrape_config import ALZConnected_total
 from thematic_analysis_model.model.manage_data import Loader, CorpusManager, Processor
-from thematic_analysis_model.model.scraping import ALZConnectedScrapingPipeline, DementiaSupportForumScrapingPipeline, Crawler
+from thematic_analysis_model.model.scraping import ALZConnectedScrapingPipeline, DementiaSupportForumScrapingPipeline, Crawler, ScrapingQueue
 from thematic_analysis_model.model.embedding import Embedder
 from thematic_analysis_model.model.dclasses import Sentence, Content
 from thematic_analysis_model.model.util import seed_generator
@@ -18,52 +19,42 @@ def main():
         tbl2_name=LINE_TBL_NAME
     )
     # loader.first_init(schema1=Content, schema2=Sentence)
-
     db, ptbl, stbl = loader.connect()
     '''
     print(ptbl.count_rows())
 
-    seeds = seed_generator(
-        prefix='https://alzconnected.org/categories/i-have-younger-onset-alzheimers/p',
-        start=1,
-        stop=5,
-        suffix=''
-    )
-
-    scraping_pipeline = ALZConnectedScrapingPipeline(
+    # scrape
+    scrape_queue = ScrapingQueue(
         tbl=ptbl,
-        forum_name='alzconnected_earlyonset',
-        seeds=seeds
+        scrape_configs=ALZConnected_total
     )
-
-    asyncio.run(scraping_pipeline.run_pipeline())
+    scrape_queue.run_queue()
     print(ptbl.count_rows())
+    '''
 
-    print(stbl.count_rows())
-    processor = Processor(
-        content_tbl=ptbl,
-        sentence_tbl=stbl
-    )
+    '''
+    processor = Processor(content_tbl=ptbl, sentence_tbl=stbl)
     processor.process_content()
+    print(stbl.count_rows())
+
+    processor.post_process()
     print(stbl.count_rows())
     '''
 
     '''
     embed_model = SentenceTransformer('all-MiniLM-L6-v2')
-    embedder = Embedder(
-        tbl=stbl,
-        embed_model=embed_model
-    )
+    embedder = Embedder(tbl=stbl, embed_model=embed_model)
     embedder.embed()
     '''
-    processor = Processor(
-        content_tbl=ptbl,
-        sentence_tbl=stbl
-    )
-    processor.post_process()
 
-    sentences = stbl.search().select(['sentence']).to_arrow()['sentence'].to_pylist()
-    pprint.pprint(sentences)
+
+
+
+
+
+
+    
+   
 
 
 

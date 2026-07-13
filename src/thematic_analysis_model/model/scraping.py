@@ -289,6 +289,30 @@ class Scraper:
             # self.scrape_queue.task_done()
             
 
+class ScrapingQueue:
+    def __init__(self, tbl: lancedb.Table, scrape_configs: list[dict] | dict):
+        self.tbl = tbl
+        if type(scrape_configs) == dict: self.scrape_configs = [scrape_configs]
+        else: self.scrape_configs = scrape_configs
+
+    def run_queue(self):
+        count = 1
+        total = len(self.scrape_configs)
+        for config in self.scrape_configs:
+            print(f'********* RUNNING CONFIG: {count} / {total} *********')
+            count += 1
+
+            scraping_pipeline = config['type_scraping_pipeline'](
+                tbl=self.tbl,
+                forum_name=config['forum_name'],
+                seeds=config['seeds'],
+                num_crawlers=config['num_crawlers'],
+                num_scrapers=config['num_scrapers']
+            )
+            asyncio.run(scraping_pipeline.run_pipeline())
+
+
+
 # extensions of ScrapingPipelineWrapper
 class ALZConnectedScrapingPipeline(ScrapingPipelineWrapper):
     def __init__(self, tbl: lancedb.Table, forum_name: str, seeds: list[str], num_crawlers: int = NUMBER_OF_CRAWLERS, num_scrapers: int = NUMBER_OF_SCRAPERS):
