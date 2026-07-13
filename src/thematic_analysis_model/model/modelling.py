@@ -135,6 +135,7 @@ class Validator:
     # recover probabilities + topics
     def transform_model(self, ids: list[int], BATCH_SIZE: int = MODELLING_BATCH_SIZE_DEFAULT):
         # for batch in ids
+        pbar = tqdm(total=len(ids), desc='TRANSFORMING DATA', unit='sentence')
         for batch in batch_generator(ids=ids, tbl=self.tbl, columns=['uuid', 'vector', 'sentence'], BATCH_SIZE=BATCH_SIZE):
             # transform batch
             uuids = batch['uuid'].tolist()
@@ -147,6 +148,8 @@ class Validator:
             # update database
             self.save_probability_topic_data(uuids=uuids, topics=topics, probs=probs)
 
+            pbar.update(len(uuids))
+        pbar.close()
 
     def save_probability_topic_data(self, uuids: list[str], topics, probs):
         payload = [
@@ -395,3 +398,33 @@ class Trial:
             vectorizer_model=self.vectorizer_model,
             calculate_probabilities=False # for now, change during validation
         )
+
+class TrialQueue:
+    def __init__(self, tbl: lancedb.Table, configs: list[TrialConfig], corpus_manager: CorpusManager):
+        self.configs = configs
+        self.tbl = tbl
+        self.corpus_manager = corpus_manager
+
+    # run queue
+    def run_queue(self):
+        count = 0
+        for config in self.configs:
+            count += 1
+            print(f"RUNNING TRIAL: {count} / {len(self.configs)}")
+
+            # get model and validation metric save paths
+            model_save_path: Path = Path(config.model_save_path)
+            validation_metric_save_path: Path = Path(config.validation_metric_save_path)
+
+            # run trial
+            trial = Trial(
+                trial_config=config,
+                tbl=self.tbl,
+                corpus_manager=self.corpus_manager,
+                model_save_path=model_save_path,
+                validation_metric_save_path=validation_metric_save_path
+            )
+            trial.run_trial()
+
+
+    

@@ -44,6 +44,8 @@ class Sentence(LanceModel):
 class TrialConfig(BaseModel):
     trial_num: int
     trial_desc: str
+    model_save_path: str
+    validation_metric_save_path: str
     embedding_model: str
     n_neighbours: int
     n_components: int
