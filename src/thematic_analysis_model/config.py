@@ -14,6 +14,9 @@ EMBEDDING_DIMENSIONS = 384
 NUMBER_OF_CRAWLERS = 20
 NUMBER_OF_SCRAPERS = 20
 
+# validation constants
+MIN_SENTENCE_LEN = 5
+
 
 # Batch Size Defaults: expeirmentally derived, alter these to test for speed.
 EMBEDDING_BATCH_SIZE_DEFUALT = 4096

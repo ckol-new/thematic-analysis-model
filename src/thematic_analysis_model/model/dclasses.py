@@ -19,25 +19,25 @@ class Content(LanceModel):
     uuid: str
     parent_uuid: str | None
     date_accessed: str
-    type_: ContentType
+    type_: str
     is_processed: bool = False
 
-# dataclass for individual line of post/comment, with all necessary metadata
-class Line(LanceModel):
-    line: str
+# dataclass for individual sentence of post/comment, with all necessary metadata
+class Sentence(LanceModel):
+    sentence: str
     url: str
     date: str
     forum_origin: str
     content_origin_uuid: str
     uuid: str
     hash_: str # url hash
-    type_: ContentType
+    type_: str
     vector: Vector(dim=EMBEDDING_DIMENSIONS) | None = None
     is_embedded: bool = False
     is_modelled: bool = False
     is_validated: bool = False
-    topic: int
-    probabilities: list[float]
+    topic: int | None = None
+    probabilities: list[float] | None = None
     
 
 # dataclass for configuration parameters of a given trial of the pipeline

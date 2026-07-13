@@ -149,12 +149,6 @@ class Crawler:
                 self.seed_queue.task_done()
                 self.pbar.update(1)
 
-    @classmethod
-    def seed_generator(cls, prefix: str, start: int, stop: int, suffix: str):
-        seeds = [
-            str(prefix) + str(i) + str(suffix) for i in range(start, stop+1)
-        ]
-        return seeds
 
 # scrape each valid post/page/discussion/thread.
 class Scraper:
@@ -351,7 +345,7 @@ class ALZConnectedScrapingPipeline(ScrapingPipelineWrapper):
         date_accessed: str = str(datetime.date.today())
         my_uuid: str = str(uuid.uuid4())
         uuid_parent = None
-        content_type = ContentType.POST
+        content_type = 'post'
         origin: str = origin
 
         # validate essentials (metadata + content)
@@ -366,7 +360,7 @@ class ALZConnectedScrapingPipeline(ScrapingPipelineWrapper):
             uuid= my_uuid,
             parent_uuid=None,
             date_accessed=date_accessed,
-            type_=ContentType.POST,
+            type_='post',
             is_processed=False
         )
 
@@ -403,7 +397,7 @@ class ALZConnectedScrapingPipeline(ScrapingPipelineWrapper):
             uuid=my_uuid,
             parent_uuid=uuid_parent,
             date_accessed=date_accessed,
-            type_=ContentType.COMMENT,
+            type_='comment',
             is_processed=False
         )
 
@@ -526,7 +520,7 @@ class DementiaSupportForumScrapingPipeline(ScrapingPipelineWrapper):
             uuid=my_uuid,
             parent_uuid=None,
             date_accessed=date_accessed,
-            type_=ContentType.POST,
+            type_='post',
             is_processed=False
         )
 
@@ -565,7 +559,7 @@ class DementiaSupportForumScrapingPipeline(ScrapingPipelineWrapper):
             uuid=my_uuid,
             parent_uuid=uuid_parent,
             date_accessed=date_accessed,
-            type_=ContentType.COMMENT,
+            type_='comment',
             is_processed=False
         )
 

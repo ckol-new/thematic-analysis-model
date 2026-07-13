@@ -4,6 +4,13 @@ from ..config import *
 
 # utility functions
 
+# seed generator
+def seed_generator(prefix: str, start: int, stop: int, suffix: str):
+    seeds = [
+        str(prefix) + str(i) + str(suffix) for i in range(start, stop+1)
+    ]
+    return seeds
+
 # get rowids by condition
 def get_ids_by_condition(tbl: lancedb.Table, query: str | None = None) -> list[int]:
     if not query:

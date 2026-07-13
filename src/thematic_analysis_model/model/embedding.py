@@ -21,11 +21,13 @@ class Embedder:
         else:
             ids = get_ids_by_condition(tbl=self.tbl, query=query)[0:EMBED_LIMIT]
 
+        pbar = tqdm(total=len(ids), desc='EMBEDDING', unit='SENTENCE')
+
 
         # for each batch -> embed batch + update bools
         #   note that batch sizes should be larger then embedding sizes, that way less read operations are required.
-        for batch_df in batch_generator(ids=ids, tbl=self.tbl, columns=['line', 'uuid'], BATCH_SIZE=READ_BATCH_SIZE):
-            docs: list[str] = batch_df['line'].tolist()
+        for batch_df in batch_generator(ids=ids, tbl=self.tbl, columns=['sentence', 'uuid'], BATCH_SIZE=READ_BATCH_SIZE):
+            docs: list[str] = batch_df['sentence'].tolist()
             uuids: list[str] = batch_df['uuid'].tolist()
 
             # paginate by embed batch size

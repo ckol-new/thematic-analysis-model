@@ -1,9 +1,15 @@
 # all classes around managing data
-from pathlib import Path
 import lancedb
-from .dclasses import Line, Content
+from .dclasses import Sentence, Content
+from .util import get_ids_by_condition, batch_generator, shuffle_ids
+from ..config import FILE_IO_BATCH_SIZE_DEFUALT, MIN_SENTENCE_LEN
+
+import gc
+from pathlib import Path
 from datetime import timedelta
 import codecs
+from uuid import uuid4
+import xxhash
 
 # methods around loading the database
 class Loader:
@@ -27,6 +33,99 @@ class Loader:
 
 # methods for processing text, and splitting to sentences
 class Processor:
+    def __init__(self, content_tbl: lancedb.Table, sentence_tbl: lancedb.Table):
+        self.content_tbl = content_tbl
+        self.sentence_tbl = sentence_tbl
+
+    def process_content(self, BATCH_SIZE: int = FILE_IO_BATCH_SIZE_DEFUALT):
+        # get unprocessed content ids
+        ids = get_ids_by_condition(tbl=self.content_tbl, query='is_processed = false')
+
+        # get usernames set
+        # usernames: set = cls.get_all_usernames(content_tbl=content_tbl, BATCH_SIZE=BATCH_SIZE)
+
+        # for unprocessed batch -> split to lines, remove usernames, validate lines
+        for batch in batch_generator(ids=ids, tbl=self.content_tbl, columns=['text', 'date', 'uuid', 'url', 'type_', 'forum_origin'], BATCH_SIZE=BATCH_SIZE):
+            current_sentences: list[Sentence] = []
+
+            # get each row
+            for row in batch.itertuples(index=True):
+                # process usernames, replace with token
+
+                # split text to sentences
+                sentences = self.split_by_sentence(text=row.text)
+                for sentence in sentences:
+                    # generate 'Sentence' objects
+                    sentence_obj: Sentence = Sentence(
+                        sentence=sentence,
+                        url=row.url,
+                        date=row.date,
+                        forum_origin=row.forum_origin,
+                        content_origin_uuid=row.uuid,
+                        uuid=str(uuid4()),
+                        hash_=xxhash.xxh64(sentence).hexdigest(),
+                        type_=row.type_,
+                        vector=None,
+                        is_embedded=False,
+                        is_modelled=False,
+                        is_validated=False,
+                        topic=None,
+                        probabilities=None
+                    )
+                    current_sentences.append(sentence_obj)
+
+            # save to lance
+            self.__save_batch(sentences=current_sentences, uuids=batch['uuid'].tolist())
+            current_sentences.clear()
+            gc.collect()
+    
+
+
+    # get all usernames as set, might come with performance cost???
+    def get_all_usernames(self, BATCH_SIZE: int = FILE_IO_BATCH_SIZE_DEFUALT):
+        usernames = set()
+
+        # get ids
+        ids = get_ids_by_condition(tbl=self.content_tbl)
+
+        # get batches, add usernames to set in batches)
+        for batch in batch_generator(ids=ids, tbl=self.content_tbl, columns=['author_username'], BATCH_SIZE=BATCH_SIZE):
+            # convert to list
+            usernames_list = batch['author_username'].tolist()
+
+            # add list to set
+            usernames.update(usernames_list)
+
+        # return usernames set
+        return usernames
+    
+    def split_by_sentence(self, text: str, MIN_SENTENCE_LEN: int = MIN_SENTENCE_LEN):
+        sentences = [s.strip() for s in text.split(sep='. ') if len(s) >= MIN_SENTENCE_LEN]
+        return sentences
+    
+    # save batch of Lines, deduplicate, update bools
+    def __save_batch(self, sentences: list[Sentence], uuids: list[str]):
+        # update line table
+        (
+            self.sentence_tbl.merge_insert(on='hash_')
+            .when_not_matched_insert_all()
+            .execute(sentences)
+        )
+
+        # update bools
+        payload = [
+            {
+                'uuid': id_,
+                'is_processed': True
+            } for id_ in uuids
+        ]
+        (
+            self.content_tbl.merge_insert(on='uuid')
+            .when_matched_update_all()
+            .execute(payload)
+        )
+
+
     @classmethod
     def clean_text(cls, text: str) -> str:
         if not text:
