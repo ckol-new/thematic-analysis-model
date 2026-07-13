@@ -42,11 +42,12 @@ class Sentence(LanceModel):
 
 # dataclass for configuration parameters of a given trial of the pipeline
 class TrialConfig(BaseModel):
-    ...
+    trial_num: int
+    trial_desc: str
 
 # dataclass for the validation metrics of the topic model, for easy serialization.
 class ValidationMetrics(BaseModel):
-    ...
+    trial_config: TrialConfig
 
 
 # adapters

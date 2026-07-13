@@ -7,10 +7,12 @@ import copy
 from tqdm import tqdm
 import gc
 
+from .dclasses import TrialConfig, ValidationMetrics
 from .util import shuffle_ids, batch_generator, get_ids_by_condition
 from ..config import MODELLING_BATCH_SIZE_DEFAULT, EMBEDDING_MODEL_NAME
 
 from bertopic import BERTopic 
+from sentence_transformers import SentenceTransformer
 
 class Modeller:
     def __init__(self, tbl: lancedb.Table, topic_model: BERTopic):
@@ -30,7 +32,7 @@ class Modeller:
         # for each batch
         submodels: list[BERTopic] = []
         count = 0
-        for batch in batch_generator(ids=shuffled_ids, tbl=self.tbl, columns=['vector', 'uuid', 'sentence'], BATCH_SIZE=2000): 
+        for batch in batch_generator(ids=shuffled_ids, tbl=self.tbl, columns=['vector', 'uuid', 'sentence'], BATCH_SIZE=MODELLING_BATCH_SIZE_DEFAULT): 
             # model batch
             # update bools
             current_uuids = batch['uuid'].tolist()
@@ -101,4 +103,62 @@ class Modeller:
         return model
 
 class Validator:
-    ...
+    def __init__(self, tbl: lancedb.Table, topic_model: BERTopic, embedding_model: SentenceTransformer):
+        self.tbl = tbl
+        self.topic_model = topic_model
+        self.topic_model.calculate_probabilities = True
+        self.embedding_model = embedding_model
+
+    # validate
+    def validate(self, BATCH_SIZE: int = MODELLING_BATCH_SIZE_DEFAULT):
+        # get relevant ids in model
+        query = 'is_modelled = true'
+        ids = get_ids_by_condition(tbl=self.tbl, query=query)
+
+        # recover data
+        self.transform_model(ids, BATCH_SIZE=BATCH_SIZE)
+
+        # get validation metrics
+        
+
+        # serialize validation metrics + figures
+        ...
+
+    # recover probabilities + topics
+    def transform_model(self, ids: list[int], BATCH_SIZE: int = MODELLING_BATCH_SIZE_DEFAULT):
+        # for batch in ids
+        for batch in batch_generator(ids=ids, tbl=self.tbl, columns=['uuid', 'vector', 'sentence'], BATCH_SIZE=BATCH_SIZE):
+            # transform batch
+            uuids = batch['uuid'].tolist()
+            embeddings = np.array(batch['vector'].tolist())
+            documents = batch['sentence'].tolist()
+
+            # note topics as int, for each doc + probs as 2D numpy array: ROW = doc index, COL= topic index
+            topics, probs = self.topic_model.transform(documents=documents, embeddings=embeddings)
+
+            # update database
+            self.save_probability_topic_data(uuids=uuids, topics=topics, probs=probs)
+
+
+    def save_probability_topic_data(self, uuids: list[str], topics, probs):
+        payload = [
+            {
+                'uuid': uid,
+                'topic': topic,
+                'probabilities': list(prob),
+                'is_validated': True
+            } for uid, topic, prob in zip(uuids, topics, probs, strict=True)
+        ]
+        (
+            self.tbl.merge_insert(on='uuid')
+            .when_matched_update_all()
+            .execute(payload)
+        )
+
+    # return validation metrics
+    def get_validation_metrics(self) -> ValidationMetrics:
+        validation_metrics = ValidationMetrics()
+        return validation_metrics
+    
+     
+    

@@ -7,7 +7,7 @@ from thematic_analysis_model.model.embedding import Embedder
 from thematic_analysis_model.model.modelling import Modeller, Validator
 from thematic_analysis_model.model.dclasses import Sentence, Content
 from thematic_analysis_model.model.util import seed_generator
-from thematic_analysis_model.model_config import topic_model
+from thematic_analysis_model.model_config import topic_model, embed_model
 
 from sentence_transformers import SentenceTransformer
 
@@ -49,6 +49,9 @@ def main():
     embedder.embed()
     '''
 
+    model_spath = Path.cwd() / 'models' / 'testing' / 'model1_test'
+
+    '''
     state_manager = CorpusManager(tbl1=ptbl, tbl2=stbl)   
     state_manager.reset_modelling_bool_flags()
 
@@ -59,6 +62,21 @@ def main():
     merged_model = modeller.model()
     fig = merged_model.visualize_topics()
     fig.show()
+
+    Modeller.save_model(merged_model, model_spath)
+    '''
+    merged_model = Modeller.load_model(path=model_spath)
+    validator = Validator(
+        tbl=stbl,
+        topic_model=merged_model,
+        embedding_model=embed_model
+    )
+
+    validator.validate()
+
+    df = stbl.search().where('is_validated = true').select(['sentence', 'topic', 'probabilities']).to_pandas()
+    print(df.head(100))
+
 
 
 
