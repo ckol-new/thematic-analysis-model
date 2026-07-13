@@ -4,8 +4,10 @@ from thematic_analysis_model.scrape_config import ALZConnected_total
 from thematic_analysis_model.model.manage_data import Loader, CorpusManager, Processor
 from thematic_analysis_model.model.scraping import ALZConnectedScrapingPipeline, DementiaSupportForumScrapingPipeline, Crawler, ScrapingQueue
 from thematic_analysis_model.model.embedding import Embedder
+from thematic_analysis_model.model.modelling import Modeller, Validator
 from thematic_analysis_model.model.dclasses import Sentence, Content
 from thematic_analysis_model.model.util import seed_generator
+from thematic_analysis_model.model_config import topic_model
 
 from sentence_transformers import SentenceTransformer
 
@@ -46,6 +48,19 @@ def main():
     embedder = Embedder(tbl=stbl, embed_model=embed_model)
     embedder.embed()
     '''
+
+    state_manager = CorpusManager(tbl1=ptbl, tbl2=stbl)   
+    state_manager.reset_modelling_bool_flags()
+
+    modeller = Modeller(
+        tbl=stbl,
+        topic_model=topic_model
+    )
+    merged_model = modeller.model()
+    fig = merged_model.visualize_topics()
+    fig.show()
+
+
 
 
 
