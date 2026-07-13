@@ -164,6 +164,7 @@ class Validator:
         all_topic_pairwise_distance, pairwise_distance_by_topic = self.get_pairwise_embedding_distance()
 
         # get intertopic cosine similarity
+        mean_similarity, max_similarity, redundant_pairs = self.get_intertopic_cosine_similarity()
 
 
         # get topic diversity
@@ -197,3 +198,43 @@ class Validator:
 
         all_topic_avg = float(np.mean(all_topic_scores)) if all_topic_scores else 0.0
         return all_topic_avg, all_topic_scores
+
+    def get_intertopic_cosine_similarity(self, REDUNDANT_PAIR_THRESHOLD=0.8):
+        # get topic ids
+        topic_ids = self.topic_model.get_topics().keys()
+        valid_topic_ids = [tid for tid in topic_ids if tid != -1] # filter outliers out
+        if len(valid_topic_ids) < 2:
+            # not enough topics
+            return None # need to null check later
+
+        # get topic embeddings
+        topic_embeddings = self.topic_model.topic_embeddings_ # still has outlier, we need to get rid of
+        id_to_index = {tid: idx for idx, tid in enumerate(topic_ids)} 
+        valid_indices = [id_to_index[tid] for tid in valid_topic_ids]
+        valid_topic_embeddings = topic_embeddings[valid_indices] # filter out outlier topic -1
+
+        # get similarity matrix, extract upper triangle to get pairwise comparisons
+        similarity_matrix = cosine_similarity(valid_topic_embeddings)
+        upper_triangle_indices = np.triu_indices_from(similarity_matrix, k=1)
+        pairwise_similarity = similarity_matrix[upper_triangle_indices]
+
+        # avg pairwise comparisons -> return value
+        mean_similarity = float(np.mean(pairwise_similarity))
+        max_similarity = float(np.max(pairwise_similarity))
+
+        #TODO get redundant scores
+        redundant_pairs = []
+        for i in range(len(valid_topic_ids)):
+            for j in range(i + 1, len(valid_topic_ids)):
+                score = similarity_matrix[i, j]
+                if score > REDUNDANT_PAIR_THRESHOLD:
+                    redundant_pair = {
+                        'topic1': valid_topic_ids[i],
+                        'topic2': valid_topic_ids[j],
+                        'score': float(score)
+                    }
+                    redundant_pairs.append(redundant_pair)
+
+
+        return mean_similarity, max_similarity, redundant_pairs 
+    
