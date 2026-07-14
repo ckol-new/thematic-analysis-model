@@ -55,13 +55,14 @@ class TrialConfig(BaseModel):
 # dataclass for the validation metrics of the topic model, for easy serialization.
 class ValidationMetrics(BaseModel):
     trial_config: TrialConfig
+    num_topics: int
     total_pairwise_embedding_distance: float
     mean_intertopic_cosine_similarity: float
     topic_diversity: float
     noise_ratio: float
     topic_pairwise_embedding_distance: list[float]
-    topic_prob_data: list[dict]
     redundant_pairs: list[dict]
+    topic_prob_data: list[dict]
 
 
 # adapters

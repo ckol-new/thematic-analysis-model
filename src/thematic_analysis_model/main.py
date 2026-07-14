@@ -81,7 +81,62 @@ def main():
         min_cluster_size=25,
         min_samples=None
     )
-    configs = [config1, config2, config3, config4, config5]
+    config6 = TrialConfig(
+        trial_num=6,
+        trial_desc='testing',
+        model_save_path=str((MODEL_SAVE_PATH_BASE / 'model6_test').resolve()),
+        validation_metric_save_path=str((VALIDATION_SAVE_PATH_BASE / 'model6_test').resolve()),
+        embedding_model=EMBEDDING_MODEL_NAME,
+        n_neighbours=15,
+        n_components=2,
+        min_cluster_size=30,
+        min_samples=None
+    )
+    config7 = TrialConfig(
+        trial_num=7,
+        trial_desc='testing',
+        model_save_path=str((MODEL_SAVE_PATH_BASE / 'model7_test').resolve()),
+        validation_metric_save_path=str((VALIDATION_SAVE_PATH_BASE / 'model7_test').resolve()),
+        embedding_model=EMBEDDING_MODEL_NAME,
+        n_neighbours=15,
+        n_components=2,
+        min_cluster_size=35,
+        min_samples=None
+    )
+    config8 = TrialConfig(
+        trial_num=8,
+        trial_desc='testing',
+        model_save_path=str((MODEL_SAVE_PATH_BASE / 'model8_test').resolve()),
+        validation_metric_save_path=str((VALIDATION_SAVE_PATH_BASE / 'model8_test').resolve()),
+        embedding_model=EMBEDDING_MODEL_NAME,
+        n_neighbours=15,
+        n_components=2,
+        min_cluster_size=38,
+        min_samples=None
+    )
+    config9 = TrialConfig(
+        trial_num=9,
+        trial_desc='testing',
+        model_save_path=str((MODEL_SAVE_PATH_BASE / 'model9_test').resolve()),
+        validation_metric_save_path=str((VALIDATION_SAVE_PATH_BASE / 'model9_test').resolve()),
+        embedding_model=EMBEDDING_MODEL_NAME,
+        n_neighbours=15,
+        n_components=2,
+        min_cluster_size=40,
+        min_samples=None
+    )
+    config10 = TrialConfig(
+        trial_num=10,
+        trial_desc='testing',
+        model_save_path=str((MODEL_SAVE_PATH_BASE / 'model10_test').resolve()),
+        validation_metric_save_path=str((VALIDATION_SAVE_PATH_BASE / 'model10_test').resolve()),
+        embedding_model=EMBEDDING_MODEL_NAME,
+        n_neighbours=15,
+        n_components=2,
+        min_cluster_size=42,
+        min_samples=None
+    )
+    configs = [config8, config9, config10]
 
     queue = TrialQueue(
         tbl=stbl,
@@ -90,7 +145,6 @@ def main():
     )
     queue.run_queue()
     
-    corpus_manager.clean_lancedb(days=1) # optimize storage
 
 
 def clean_db():

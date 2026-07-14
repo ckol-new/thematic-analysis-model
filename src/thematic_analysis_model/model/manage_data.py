@@ -214,20 +214,7 @@ class CorpusManager:
     
     # clean lancedb size: reduces size of lancedb
     def clean_lancedb(self, days: int = 0):
-        # compact data
-        self.tbl1.compact_files()
-        self.tbl2.compact_files()
-
-        # clean old versioning
-        self.tbl1.cleanup_old_versions(
-            older_than=timedelta(days=days),
-            delete_unverified=True
-        )
-        self.tbl2.cleanup_old_versions(
-            older_than=timedelta(days=days),
-            delete_unverified=True
-        )
 
         # compact fragments
-        self.tbl1.optimize()
-        self.tbl2.optimize()
+        self.tbl1.optimize(cleanup_older_than=timedelta(days=days))
+        self.tbl2.optimize(cleanup_older_than=timedelta(days=days))

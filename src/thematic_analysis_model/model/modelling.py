@@ -132,9 +132,18 @@ class Validator:
         
         # get figures
         # serialize validation metrics + figures
-        fig1 = self.topic_model.visualize_topics()
         self.validation_save_path.mkdir(parents=True, exist_ok=True)
+        fig1 = self.topic_model.visualize_topics()
         fig1.write_html(self.validation_save_path / 'topic_map.html')
+
+        fig2 = self.topic_model.visualize_heatmap()
+        fig2.write_html(self.validation_save_path / 'topic_heatmap.html')
+
+        fig3 = self.visualize_documents()
+        fig3.write_html(self.validation_save_path / 'document_map.html')
+
+        fig4 = self.topic_model.visualize_hierarchy()
+        fig4.write_html(self.validation_save_path / 'topic_hierarchy.html')
 
         self.save_validation_metrics(validation_metrics=validation_metric)
 
@@ -180,6 +189,8 @@ class Validator:
     def get_validation_metrics(self) -> ValidationMetrics:
         # get NPMI
 
+        num_topics: int = len(self.topic_model.get_topic_info()) - 1
+
         # get pairwise embedding distance
         all_topic_pairwise_distance, pairwise_distance_by_topic = self.get_pairwise_embedding_distance()
         print(f'topic pairwise embedding distance {all_topic_pairwise_distance}')
@@ -203,13 +214,14 @@ class Validator:
 
         validation_metrics = ValidationMetrics(
             trial_config=self.trial_config,
+            num_topics=num_topics,
             total_pairwise_embedding_distance=all_topic_pairwise_distance,
-            topic_pairwise_embedding_distance=pairwise_distance_by_topic,
             mean_intertopic_cosine_similarity=mean_similarity,
-            redundant_pairs=redundant_pairs,
             topic_diversity=topic_diversity,
             noise_ratio=noise_ratio,
-            topic_prob_data=topic_prob_data
+            topic_pairwise_embedding_distance=pairwise_distance_by_topic,
+            topic_prob_data=topic_prob_data,
+            redundant_pairs=redundant_pairs
         )
         return validation_metrics
     
@@ -320,7 +332,13 @@ class Validator:
     def compute_noise_ratio(self, outlier_info, topics_info) -> float:
         topics_count = topics_info['Count'].to_list()
         topics_doc_num = sum(topics_count)
-        outlier_doc_num = outlier_info['Count'].iloc[0]
+
+        # Safeguard against empty outlier DataFrame
+        if outlier_info.empty:
+            outlier_doc_num = 0
+        else:
+            outlier_doc_num = outlier_info['Count'].iloc[0]
+
         nr = outlier_doc_num / topics_doc_num
         return nr
     
@@ -356,6 +374,7 @@ class Validator:
             batch_ids = ids[i:i+BATCH_SIZE]
             yield np.array(self.tbl.take_row_ids(batch_ids).select(['probabilities']).to_arrow()['probabilities'].to_pylist())
 
+
     # generator
     def get_lines_by_topic(self, topic_num: int, BATCH_SIZE: int = FILE_IO_BATCH_SIZE_DEFUALT):
         # query ids
@@ -366,6 +385,16 @@ class Validator:
         for i in range(0, total, BATCH_SIZE):
             batch_ids = ids[i:i+BATCH_SIZE]
             yield self.tbl.take_row_ids(batch_ids).to_pandas()
+
+    #TODO OPTIMIZE THIS....
+    def visualize_documents(self):
+        df = self.tbl.search().where('is_validated = true').select(['sentence', 'vector', 'topic']).to_pandas()
+        docs = df['sentence'].tolist()
+        embeddings = np.vstack(df["vector"].values)
+        topics = df['topic'].tolist()
+
+        fig = self.topic_model.visualize_documents(docs=docs, embeddings=embeddings)
+        return fig
 
     def save_validation_metrics(self, validation_metrics: ValidationMetrics):
         with (self.validation_save_path / 'validation_metric_serialized.json').open(mode='w', encoding='utf-8') as f:
@@ -455,6 +484,9 @@ class TrialQueue:
                 validation_metric_save_path=validation_metric_save_path
             )
             trial.run_trial()
+
+            # clean db
+            self.corpus_manager.clean_lancedb()
         
 
 
