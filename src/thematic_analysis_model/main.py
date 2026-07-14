@@ -136,7 +136,7 @@ def main():
         min_cluster_size=42,
         min_samples=None
     )
-    configs = [config8, config9, config10]
+    configs = [config1, config2, config3, config4, config5, config6, config7, config8, config9, config10]
 
     queue = TrialQueue(
         tbl=stbl,

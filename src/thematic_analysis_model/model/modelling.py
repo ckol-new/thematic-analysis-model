@@ -133,19 +133,45 @@ class Validator:
         # get figures
         # serialize validation metrics + figures
         self.validation_save_path.mkdir(parents=True, exist_ok=True)
-        fig1 = self.topic_model.visualize_topics()
-        fig1.write_html(self.validation_save_path / 'topic_map.html')
-
-        fig2 = self.topic_model.visualize_heatmap()
-        fig2.write_html(self.validation_save_path / 'topic_heatmap.html')
-
-        fig3 = self.visualize_documents()
-        fig3.write_html(self.validation_save_path / 'document_map.html')
-
-        fig4 = self.topic_model.visualize_hierarchy()
-        fig4.write_html(self.validation_save_path / 'topic_hierarchy.html')
-
         self.save_validation_metrics(validation_metrics=validation_metric)
+
+        # Determine the number of valid topics (excluding outliers)
+        topic_ids = self.topic_model.get_topics().keys()
+        valid_topics = [tid for tid in topic_ids if tid != -1]
+        num_valid_topics = len(valid_topics)
+
+        # 1. Visualize Topics (requires at least 1 valid topic)
+        if num_valid_topics >= 1:
+            try:
+                fig1 = self.topic_model.visualize_topics()
+                fig1.write_html(self.validation_save_path / 'topic_map.html')
+            except Exception as e:
+                print(f"Could not generate topic map: {e}")
+        else:
+            print("Skipping topic map (no valid topics found).")
+
+        # 2. Heatmap & Hierarchy (require at least 2 valid topics)
+        if num_valid_topics >= 2:
+            try:
+                fig2 = self.topic_model.visualize_heatmap()
+                fig2.write_html(self.validation_save_path / 'topic_heatmap.html')
+            except Exception as e:
+                print(f"Could not generate topic heatmap: {e}")
+
+            try:
+                fig4 = self.topic_model.visualize_hierarchy()
+                fig4.write_html(self.validation_save_path / 'topic_hierarchy.html')
+            except Exception as e:
+                print(f"Could not generate topic hierarchy: {e}")
+        else:
+            print("Skipping heatmap and hierarchy plots (requires at least 2 valid topics).")
+
+        # 3. Visualize Documents (works even with 0 valid topics, showing outliers)
+        try:
+            fig3 = self.visualize_documents()
+            fig3.write_html(self.validation_save_path / 'document_map.html')
+        except Exception as e:
+            print(f"Could not generate document map: {e}")
 
 
 
@@ -393,7 +419,7 @@ class Validator:
         embeddings = np.vstack(df["vector"].values)
         topics = df['topic'].tolist()
 
-        fig = self.topic_model.visualize_documents(docs=docs, embeddings=embeddings)
+        fig = self.topic_model.visualize_documents(docs=docs, embeddings=embeddings, hide_document_hover=True)
         return fig
 
     def save_validation_metrics(self, validation_metrics: ValidationMetrics):
@@ -449,7 +475,7 @@ class Trial:
             min_samples=self.trial_config.min_samples,
             prediction_data=False
         )
-        self.vectorizer_model = CountVectorizer()
+        self.vectorizer_model = CountVectorizer(stop_words='english')
         self.topic_model = BERTopic(
             embedding_model=self.embedding_model,
             umap_model=self.umap_model,
