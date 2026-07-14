@@ -8,6 +8,9 @@ LANCE_PATH: Path = Path.cwd() / 'lancedatabase'
 CONTENT_TBL_NAME = 'content'
 LINE_TBL_NAME = 'lines'
 
+MODEL_SAVE_PATH_BASE = Path.cwd() / 'models' / 'testing'
+VALIDATION_SAVE_PATH_BASE = Path.cwd() / 'validation_metrics' / 'testing'
+
 # Basic constants
 EMBEDDING_MODEL_NAME = 'all-MiniLM-L6-v2'
 EMBEDDING_DIMENSIONS = 384
@@ -22,3 +25,4 @@ MIN_SENTENCE_LEN = 5
 EMBEDDING_BATCH_SIZE_DEFUALT = 4096
 MODELLING_BATCH_SIZE_DEFAULT = 50000
 FILE_IO_BATCH_SIZE_DEFUALT = 100000
+

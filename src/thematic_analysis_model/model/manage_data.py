@@ -227,3 +227,7 @@ class CorpusManager:
             older_than=timedelta(days=days),
             delete_unverified=True
         )
+
+        # compact fragments
+        self.tbl1.optimize()
+        self.tbl2.optimize()

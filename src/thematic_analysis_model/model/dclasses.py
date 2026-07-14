@@ -50,10 +50,18 @@ class TrialConfig(BaseModel):
     n_neighbours: int
     n_components: int
     min_cluster_size: int
+    min_samples: int | None
 
 # dataclass for the validation metrics of the topic model, for easy serialization.
 class ValidationMetrics(BaseModel):
     trial_config: TrialConfig
+    total_pairwise_embedding_distance: float
+    mean_intertopic_cosine_similarity: float
+    topic_diversity: float
+    noise_ratio: float
+    topic_pairwise_embedding_distance: list[float]
+    topic_prob_data: list[dict]
+    redundant_pairs: list[dict]
 
 
 # adapters

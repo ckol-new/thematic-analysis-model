@@ -4,8 +4,8 @@ from thematic_analysis_model.scrape_config import ALZConnected_total
 from thematic_analysis_model.model.manage_data import Loader, CorpusManager, Processor
 from thematic_analysis_model.model.scraping import ALZConnectedScrapingPipeline, DementiaSupportForumScrapingPipeline, Crawler, ScrapingQueue
 from thematic_analysis_model.model.embedding import Embedder
-from thematic_analysis_model.model.modelling import Modeller, Validator
-from thematic_analysis_model.model.dclasses import Sentence, Content
+from thematic_analysis_model.model.modelling import Modeller, Validator, Trial, TrialQueue
+from thematic_analysis_model.model.dclasses import Sentence, Content, TrialConfig
 from thematic_analysis_model.model.util import seed_generator
 from thematic_analysis_model.model_config import topic_model, embed_model
 
@@ -22,67 +22,90 @@ def main():
     )
     # loader.first_init(schema1=Content, schema2=Sentence)
     db, ptbl, stbl = loader.connect()
-    '''
-    print(ptbl.count_rows())
 
-    # scrape
-    scrape_queue = ScrapingQueue(
-        tbl=ptbl,
-        scrape_configs=ALZConnected_total
+    corpus_manager = CorpusManager(tbl1=ptbl, tbl2=stbl)
+
+
+    config1 = TrialConfig(
+        trial_num=1,
+        trial_desc='testing',
+        model_save_path=str((MODEL_SAVE_PATH_BASE / 'model1_test').resolve()),
+        validation_metric_save_path=str((VALIDATION_SAVE_PATH_BASE / 'model1_test').resolve()),
+        embedding_model=EMBEDDING_MODEL_NAME,
+        n_neighbours=15,
+        n_components=2,
+        min_cluster_size=5,
+        min_samples=None
     )
-    scrape_queue.run_queue()
-    print(ptbl.count_rows())
-    '''
+    config2 = TrialConfig(
+        trial_num=2,
+        trial_desc='testing',
+        model_save_path=str((MODEL_SAVE_PATH_BASE / 'model2_test').resolve()),
+        validation_metric_save_path=str((VALIDATION_SAVE_PATH_BASE / 'model2_test').resolve()),
+        embedding_model=EMBEDDING_MODEL_NAME,
+        n_neighbours=15,
+        n_components=2,
+        min_cluster_size=10,
+        min_samples=None
+    )
+    config3 = TrialConfig(
+        trial_num=3,
+        trial_desc='testing',
+        model_save_path=str((MODEL_SAVE_PATH_BASE / 'model3_test').resolve()),
+        validation_metric_save_path=str((VALIDATION_SAVE_PATH_BASE / 'model3_test').resolve()),
+        embedding_model=EMBEDDING_MODEL_NAME,
+        n_neighbours=15,
+        n_components=2,
+        min_cluster_size=15,
+        min_samples=None
+    )
+    config4 = TrialConfig(
+        trial_num=4,
+        trial_desc='testing',
+        model_save_path=str((MODEL_SAVE_PATH_BASE / 'model4_test').resolve()),
+        validation_metric_save_path=str((VALIDATION_SAVE_PATH_BASE / 'model4_test').resolve()),
+        embedding_model=EMBEDDING_MODEL_NAME,
+        n_neighbours=15,
+        n_components=2,
+        min_cluster_size=20,
+        min_samples=None
+    )
+    config5 = TrialConfig(
+        trial_num=5,
+        trial_desc='testing',
+        model_save_path=str((MODEL_SAVE_PATH_BASE / 'model5_test').resolve()),
+        validation_metric_save_path=str((VALIDATION_SAVE_PATH_BASE / 'model5_test').resolve()),
+        embedding_model=EMBEDDING_MODEL_NAME,
+        n_neighbours=15,
+        n_components=2,
+        min_cluster_size=25,
+        min_samples=None
+    )
+    configs = [config1, config2, config3, config4, config5]
 
-    '''
-    processor = Processor(content_tbl=ptbl, sentence_tbl=stbl)
-    processor.process_content()
-    print(stbl.count_rows())
-
-    processor.post_process()
-    print(stbl.count_rows())
-    '''
-
-    '''
-    embed_model = SentenceTransformer('all-MiniLM-L6-v2')
-    embedder = Embedder(tbl=stbl, embed_model=embed_model)
-    embedder.embed()
-    '''
-
-    model_spath = Path.cwd() / 'models' / 'testing' / 'model1_test'
-
-    '''
-    state_manager = CorpusManager(tbl1=ptbl, tbl2=stbl)   
-    state_manager.reset_modelling_bool_flags()
-
-    modeller = Modeller(
+    queue = TrialQueue(
         tbl=stbl,
-        topic_model=topic_model
+        configs=configs,
+        corpus_manager=corpus_manager
     )
-    merged_model = modeller.model()
-    fig = merged_model.visualize_topics()
-    fig.show()
-
-    Modeller.save_model(merged_model, model_spath)
-    '''
-
-    state_manager = CorpusManager(tbl1=ptbl, tbl2=stbl)   
-    state_manager.reset_validation_bool_flags()
-
-    merged_model = Modeller.load_model(path=model_spath)
-    validator = Validator(
-        tbl=stbl,
-        topic_model=merged_model,
-        embedding_model=embed_model
-    )
-
-    validator.validate()
-
-    df = stbl.search().where('is_validated = true').select(['sentence', 'topic', 'probabilities']).to_pandas()
-    print(df.head(100))
+    queue.run_queue()
+    
+    corpus_manager.clean_lancedb(days=1) # optimize storage
 
 
+def clean_db():
+    # current lance
+    loader = Loader(LANCE_PATH, CONTENT_TBL_NAME, LINE_TBL_NAME)
+    db, tbl1, tbl2 = loader.connect()
+    manager = CorpusManager(tbl1,tbl2)
+    manager.clean_lancedb(0)
 
+
+    # old lance
+    loader2 = Loader(Path.cwd() / 'database', 'content', 'sentence')
+    db, tbl1, tbl2 = loader2.connect()
+    manager2 = CorpusManager(tbl1,tbl2)
+    manager.clean_lancedb(0)
 
 
 

@@ -8,7 +8,7 @@ from tqdm import tqdm
 import gc
 
 from .manage_data import CorpusManager
-from .dclasses import TrialConfig, ValidationMetrics
+from .dclasses import TrialConfig, ValidationMetrics, validation_metrics_adapter
 from .util import shuffle_ids, batch_generator, get_ids_by_condition
 from ..config import MODELLING_BATCH_SIZE_DEFAULT, EMBEDDING_MODEL_NAME, FILE_IO_BATCH_SIZE_DEFUALT
 
@@ -110,11 +110,13 @@ class Modeller:
         return model
 
 class Validator:
-    def __init__(self, tbl: lancedb.Table, topic_model: BERTopic, embedding_model: SentenceTransformer):
+    def __init__(self, tbl: lancedb.Table, topic_model: BERTopic, embedding_model: SentenceTransformer, validation_save_path: Path, trial_config: TrialConfig):
         self.tbl = tbl
         self.topic_model = topic_model
         self.topic_model.calculate_probabilities = True
         self.embedding_model = embedding_model
+        self.validation_save_path = validation_save_path
+        self.trial_config = trial_config
 
     # validate
     def validate(self, BATCH_SIZE: int = MODELLING_BATCH_SIZE_DEFAULT):
@@ -126,11 +128,19 @@ class Validator:
         self.transform_model(ids, BATCH_SIZE=BATCH_SIZE)
 
         # get validation metrics
-        self.get_validation_metrics()
+        validation_metric = self.get_validation_metrics()
         
-
+        # get figures
         # serialize validation metrics + figures
-        ...
+        fig1 = self.topic_model.visualize_topics()
+        self.validation_save_path.mkdir(parents=True, exist_ok=True)
+        fig1.write_html(self.validation_save_path / 'topic_map.html')
+
+        self.save_validation_metrics(validation_metrics=validation_metric)
+
+
+
+
 
     # recover probabilities + topics
     def transform_model(self, ids: list[int], BATCH_SIZE: int = MODELLING_BATCH_SIZE_DEFAULT):
@@ -191,7 +201,16 @@ class Validator:
 
         # get bootstrap resampling stability
 
-        validation_metrics = None
+        validation_metrics = ValidationMetrics(
+            trial_config=self.trial_config,
+            total_pairwise_embedding_distance=all_topic_pairwise_distance,
+            topic_pairwise_embedding_distance=pairwise_distance_by_topic,
+            mean_intertopic_cosine_similarity=mean_similarity,
+            redundant_pairs=redundant_pairs,
+            topic_diversity=topic_diversity,
+            noise_ratio=noise_ratio,
+            topic_prob_data=topic_prob_data
+        )
         return validation_metrics
     
     def get_pairwise_embedding_distance(self):
@@ -348,6 +367,10 @@ class Validator:
             batch_ids = ids[i:i+BATCH_SIZE]
             yield self.tbl.take_row_ids(batch_ids).to_pandas()
 
+    def save_validation_metrics(self, validation_metrics: ValidationMetrics):
+        with (self.validation_save_path / 'validation_metric_serialized.json').open(mode='w', encoding='utf-8') as f:
+            f.write(validation_metrics_adapter.dump_json(validation_metrics, indent=4).decode('utf-8'))
+
 
 class Trial:
     def __init__(self, trial_config: TrialConfig, tbl: lancedb.Table, corpus_manager: CorpusManager, model_save_path: Path, validation_metric_save_path: Path):
@@ -369,12 +392,18 @@ class Trial:
         )
         merged_model = modeller.model()
         Modeller.save_model(model=merged_model, path=self.model_save_path)
+    
+        # have to reload model, to force BERTopic to realize the HDBSCAN tree is gone, otherwise it assumes it is still there, even if it isn't due to .merge_models()
+        # REALLY IMPORTANT FOR IT TO WORK.
+        merged_model = Modeller.load_model(self.model_save_path)
 
         # validate
         validator = Validator(
             tbl=self.tbl,
-            topic_model=self.topic_model,
-            embedding_model=self.embedding_model
+            topic_model=merged_model,
+            embedding_model=self.embedding_model,
+            validation_save_path=self.validation_metric_save_path,
+            trial_config=self.trial_config
         )
         validation_metric = validator.validate()
         
@@ -384,11 +413,12 @@ class Trial:
         self.embedding_model = SentenceTransformer(self.trial_config.embedding_model)
         self.umap_model = UMAP(
             n_neighbors=self.trial_config.n_neighbours,
-            n_components=self.trial_config.n_components
+            n_components=self.trial_config.n_components,
         )
         self.hdbscan_model = HDBSCAN(
             min_cluster_size=self.trial_config.min_cluster_size,
-            min_samples=self.trial_config.min_samples
+            min_samples=self.trial_config.min_samples,
+            prediction_data=False
         )
         self.vectorizer_model = CountVectorizer()
         self.topic_model = BERTopic(
@@ -425,6 +455,7 @@ class TrialQueue:
                 validation_metric_save_path=validation_metric_save_path
             )
             trial.run_trial()
+        
 
 
     

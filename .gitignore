@@ -19,5 +19,6 @@ split_db/
 test_db/
 models/
 lancedatabase/
+validation_metrics/
 
 .vscode/
