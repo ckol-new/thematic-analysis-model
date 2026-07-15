@@ -185,6 +185,11 @@ class CorpusManager:
         self.tbl1 = tbl1
         self.tbl2 = tbl2
 
+    # helps with testing unprocessed lines
+    def sample_sentences(self, num: int = 1000):
+        lines = self.tbl2.search().where('forum_origin LIKE "%dementiasupportforum%"').select(['sentence']).to_arrow()['sentence'].to_pylist()
+        return lines
+
     # reset validation flags
     def reset_validation_bool_flags(self):
         self.tbl2.update(values_sql={

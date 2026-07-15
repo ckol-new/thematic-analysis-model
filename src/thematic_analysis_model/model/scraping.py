@@ -1,6 +1,6 @@
 # all classes around scraping and processing
 from ..config import NUMBER_OF_CRAWLERS, NUMBER_OF_SCRAPERS
-from .manage_data import Processor
+from .manage_data import Processor, CorpusManager
 import lancedb
 import asyncio
 from pydantic import ValidationError
@@ -217,7 +217,7 @@ class Scraper:
 
                 [self.scrape_queue.put_nowait(content) for content in contents if contents ]
             except ValidationError as v:
-                print(f'Validation error at {crawl_node}: {type(v).__name__} -> {v}')
+                ...
             except Exception as e:
                 print(f"💥 Unexpected parsing error at {crawl_node}: {type(e).__name__} -> {e}")
             finally:
@@ -290,10 +290,12 @@ class Scraper:
             
 
 class ScrapingQueue:
-    def __init__(self, tbl: lancedb.Table, scrape_configs: list[dict] | dict):
+    def __init__(self, tbl: lancedb.Table, scrape_configs: list[dict] | dict, manager: CorpusManager):
         self.tbl = tbl
         if type(scrape_configs) == dict: self.scrape_configs = [scrape_configs]
         else: self.scrape_configs = scrape_configs
+
+        self.manager = manager
 
     def run_queue(self):
         count = 1
@@ -310,6 +312,10 @@ class ScrapingQueue:
                 num_scrapers=config['num_scrapers']
             )
             asyncio.run(scraping_pipeline.run_pipeline())
+
+            self.manager.clean_lancedb()
+
+            print(f'Current length: {self.tbl.count_rows()}')
 
 
 

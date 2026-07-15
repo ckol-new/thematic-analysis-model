@@ -140,8 +140,10 @@ class Validator:
         valid_topics = [tid for tid in topic_ids if tid != -1]
         num_valid_topics = len(valid_topics)
 
+        print('***** VISUALIZING TOPICS *****')
         # 1. Visualize Topics (requires at least 1 valid topic)
         if num_valid_topics >= 1:
+            print('visualize topics')
             try:
                 fig1 = self.topic_model.visualize_topics()
                 fig1.write_html(self.validation_save_path / 'topic_map.html')
@@ -152,12 +154,14 @@ class Validator:
 
         # 2. Heatmap & Hierarchy (require at least 2 valid topics)
         if num_valid_topics >= 2:
+            print('visualize heat map')
             try:
                 fig2 = self.topic_model.visualize_heatmap()
                 fig2.write_html(self.validation_save_path / 'topic_heatmap.html')
             except Exception as e:
                 print(f"Could not generate topic heatmap: {e}")
 
+            print('visualize hierarchy')
             try:
                 fig4 = self.topic_model.visualize_hierarchy()
                 fig4.write_html(self.validation_save_path / 'topic_hierarchy.html')
@@ -167,6 +171,7 @@ class Validator:
             print("Skipping heatmap and hierarchy plots (requires at least 2 valid topics).")
 
         # 3. Visualize Documents (works even with 0 valid topics, showing outliers)
+        print('visualize documents')
         try:
             fig3 = self.visualize_documents()
             fig3.write_html(self.validation_save_path / 'document_map.html')
@@ -419,7 +424,7 @@ class Validator:
         embeddings = np.vstack(df["vector"].values)
         topics = df['topic'].tolist()
 
-        fig = self.topic_model.visualize_documents(docs=docs, embeddings=embeddings, hide_document_hover=True)
+        fig = self.topic_model.visualize_documents(docs=docs, embeddings=embeddings, hide_annotations=True, hide_document_hover=True)
         return fig
 
     def save_validation_metrics(self, validation_metrics: ValidationMetrics):
@@ -512,6 +517,7 @@ class TrialQueue:
             trial.run_trial()
 
             # clean db
+            print('***** CLEANING LANCE *****')
             self.corpus_manager.clean_lancedb()
         
 

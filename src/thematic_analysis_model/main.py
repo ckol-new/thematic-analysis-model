@@ -1,6 +1,6 @@
 import asyncio
 from thematic_analysis_model.config import *
-from thematic_analysis_model.scrape_config import ALZConnected_total
+from thematic_analysis_model.scrape_config import ALZConnected_total, DementiaSupportForum_TOTAL
 from thematic_analysis_model.model.manage_data import Loader, CorpusManager, Processor
 from thematic_analysis_model.model.scraping import ALZConnectedScrapingPipeline, DementiaSupportForumScrapingPipeline, Crawler, ScrapingQueue
 from thematic_analysis_model.model.embedding import Embedder
@@ -12,6 +12,21 @@ from thematic_analysis_model.model_config import topic_model, embed_model
 from sentence_transformers import SentenceTransformer
 
 import pprint
+
+def scraping_a():
+    configs = ALZConnected_total + DementiaSupportForum_TOTAL
+    # load database
+    loader = Loader(
+        lance_path=LANCE_PATH,
+        tbl1_name=CONTENT_TBL_NAME,
+        tbl2_name=LINE_TBL_NAME
+    )
+    # loader.first_init(schema1=Content, schema2=Sentence)
+    db, ptbl, stbl = loader.connect()
+    corpus_manager = CorpusManager(tbl1=ptbl, tbl2=stbl)
+
+    # 
+
 
 def main():
     # load database
@@ -34,7 +49,7 @@ def main():
         embedding_model=EMBEDDING_MODEL_NAME,
         n_neighbours=15,
         n_components=2,
-        min_cluster_size=5,
+        min_cluster_size=25,
         min_samples=None
     )
     config2 = TrialConfig(
@@ -45,7 +60,7 @@ def main():
         embedding_model=EMBEDDING_MODEL_NAME,
         n_neighbours=15,
         n_components=2,
-        min_cluster_size=10,
+        min_cluster_size=27,
         min_samples=None
     )
     config3 = TrialConfig(
@@ -56,7 +71,7 @@ def main():
         embedding_model=EMBEDDING_MODEL_NAME,
         n_neighbours=15,
         n_components=2,
-        min_cluster_size=15,
+        min_cluster_size=29,
         min_samples=None
     )
     config4 = TrialConfig(
@@ -67,7 +82,7 @@ def main():
         embedding_model=EMBEDDING_MODEL_NAME,
         n_neighbours=15,
         n_components=2,
-        min_cluster_size=20,
+        min_cluster_size=31,
         min_samples=None
     )
     config5 = TrialConfig(
@@ -78,7 +93,7 @@ def main():
         embedding_model=EMBEDDING_MODEL_NAME,
         n_neighbours=15,
         n_components=2,
-        min_cluster_size=25,
+        min_cluster_size=33,
         min_samples=None
     )
     config6 = TrialConfig(
@@ -89,7 +104,7 @@ def main():
         embedding_model=EMBEDDING_MODEL_NAME,
         n_neighbours=15,
         n_components=2,
-        min_cluster_size=30,
+        min_cluster_size=35,
         min_samples=None
     )
     config7 = TrialConfig(
@@ -100,7 +115,7 @@ def main():
         embedding_model=EMBEDDING_MODEL_NAME,
         n_neighbours=15,
         n_components=2,
-        min_cluster_size=35,
+        min_cluster_size=37,
         min_samples=None
     )
     config8 = TrialConfig(
@@ -111,7 +126,7 @@ def main():
         embedding_model=EMBEDDING_MODEL_NAME,
         n_neighbours=15,
         n_components=2,
-        min_cluster_size=38,
+        min_cluster_size=39,
         min_samples=None
     )
     config9 = TrialConfig(
@@ -122,7 +137,7 @@ def main():
         embedding_model=EMBEDDING_MODEL_NAME,
         n_neighbours=15,
         n_components=2,
-        min_cluster_size=40,
+        min_cluster_size=41,
         min_samples=None
     )
     config10 = TrialConfig(
@@ -133,10 +148,10 @@ def main():
         embedding_model=EMBEDDING_MODEL_NAME,
         n_neighbours=15,
         n_components=2,
-        min_cluster_size=42,
+        min_cluster_size=43,
         min_samples=None
     )
-    configs = [config1, config2, config3, config4, config5, config6, config7, config8, config9, config10]
+    configs = [config6]
 
     queue = TrialQueue(
         tbl=stbl,
@@ -144,7 +159,18 @@ def main():
         corpus_manager=corpus_manager
     )
     queue.run_queue()
-    
+
+def reset():
+    # load database
+    loader = Loader(
+        lance_path=LANCE_PATH,
+        tbl1_name=CONTENT_TBL_NAME,
+        tbl2_name=LINE_TBL_NAME
+    )
+    loader.first_init(schema1=Content, schema2=Sentence)
+    db, p, s = loader.connect()
+    print(p.count_rows())
+    print(s.count_rows())
 
 
 def clean_db():
