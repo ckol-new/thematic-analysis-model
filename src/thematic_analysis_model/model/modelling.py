@@ -20,6 +20,9 @@ from umap import UMAP
 from hdbscan import HDBSCAN
 from sklearn.feature_extraction.text import CountVectorizer
 
+import itertools
+from typing import Any, List, Union
+
 
 class Modeller:
     def __init__(self, tbl: lancedb.Table, topic_model: BERTopic):
@@ -170,6 +173,7 @@ class Validator:
         else:
             print("Skipping heatmap and hierarchy plots (requires at least 2 valid topics).")
 
+        ''' 
         # 3. Visualize Documents (works even with 0 valid topics, showing outliers)
         print('visualize documents')
         try:
@@ -177,10 +181,7 @@ class Validator:
             fig3.write_html(self.validation_save_path / 'document_map.html')
         except Exception as e:
             print(f"Could not generate document map: {e}")
-
-
-
-
+        '''
 
     # recover probabilities + topics
     def transform_model(self, ids: list[int], BATCH_SIZE: int = MODELLING_BATCH_SIZE_DEFAULT):
@@ -520,6 +521,65 @@ class TrialQueue:
             print('***** CLEANING LANCE *****')
             self.corpus_manager.clean_lancedb()
         
+    # AI Generated, may need to be fixed.
+    # generates every combination of trial configs for each trial config parameter (not including trial num, trial desc, or save path)
+    @classmethod
+    def generate_trial_configs(cls, **kwargs: Union[Any, List[Any]]) -> List[TrialConfig]:
+        """
+        Generates a list of TrialConfig Pydantic objects by sweeping over 
+        any parameters passed as lists. Automatically populates trial_num, 
+        trial_desc, and interpolates save paths.
+        """
+        # 1. Separate swept fields (passed as lists) from static fields
+        swept_fields = []
+        param_grids = {}
+        
+        for key, value in kwargs.items():
+            # If the parameter is a list, we sweep it (excluding strings which are iterables but not lists)
+            if isinstance(value, list) and not isinstance(value, str):
+                swept_fields.append(key)
+                param_grids[key] = value
+            else:
+                param_grids[key] = [value]  # Normalize static values to a list of length 1
 
-
-    
+        # 2. Generate the Cartesian product of all parameters
+        keys = list(param_grids.keys())
+        value_lists = [param_grids[k] for k in keys]
+        
+        trial_configs = []
+        
+        for trial_idx, combo in enumerate(itertools.product(*value_lists), start=1):
+            combo_dict = dict(zip(keys, combo))
+            
+            # 3. Auto-generate the trial description based on SWEPT fields only
+            desc_parts = []
+            for field in swept_fields:
+                desc_parts.append(f"{field}_{combo_dict[field]}")
+            
+            if desc_parts:
+                trial_desc = f"trial_{trial_idx}_" + "_".join(desc_parts)
+            else:
+                trial_desc = f"trial_{trial_idx}_static"
+                
+            # 4. Handle dynamic path interpolation (so trials don't overwrite each other)
+            # We allow the user to pass templates like: "models/my_model_{trial_num}.pkl"
+            for path_field in ["model_save_path", "validation_metric_save_path"]:
+                path_val = combo_dict.get(path_field)
+                if isinstance(path_val, str):
+                    combo_dict[path_field] = path_val.format(
+                        trial_num=trial_idx, 
+                        trial_desc=trial_desc
+                    )
+            
+            # 5. Assemble the complete configuration dictionary
+            config_payload = {
+                "trial_num": trial_idx,
+                "trial_desc": trial_desc,
+                **combo_dict
+            }
+            
+            # Instantiate the actual Pydantic model (this runs your Pydantic validation)
+            trial_configs.append(TrialConfig(**config_payload))
+            
+        return trial_configs
+        

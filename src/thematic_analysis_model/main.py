@@ -40,118 +40,15 @@ def main():
 
     corpus_manager = CorpusManager(tbl1=ptbl, tbl2=stbl)
 
-
-    config1 = TrialConfig(
-        trial_num=1,
-        trial_desc='testing',
-        model_save_path=str((MODEL_SAVE_PATH_BASE / 'model1_test').resolve()),
-        validation_metric_save_path=str((VALIDATION_SAVE_PATH_BASE / 'model1_test').resolve()),
-        embedding_model=EMBEDDING_MODEL_NAME,
+    configs = TrialQueue.generate_trial_configs(
+        model_save_path='models/fine-tuning/{trial_desc}',
+        validation_metric_save_path='validation_metrics/fine-tuning/{trial_desc}',
+        embedding_model='all-MiniLM-L6-v2',
         n_neighbours=15,
-        n_components=2,
-        min_cluster_size=25,
+        n_components=5,
+        min_cluster_size=[20, 25, 27, 30, 32, 35, 37, 40],
         min_samples=None
     )
-    config2 = TrialConfig(
-        trial_num=2,
-        trial_desc='testing',
-        model_save_path=str((MODEL_SAVE_PATH_BASE / 'model2_test').resolve()),
-        validation_metric_save_path=str((VALIDATION_SAVE_PATH_BASE / 'model2_test').resolve()),
-        embedding_model=EMBEDDING_MODEL_NAME,
-        n_neighbours=15,
-        n_components=2,
-        min_cluster_size=27,
-        min_samples=None
-    )
-    config3 = TrialConfig(
-        trial_num=3,
-        trial_desc='testing',
-        model_save_path=str((MODEL_SAVE_PATH_BASE / 'model3_test').resolve()),
-        validation_metric_save_path=str((VALIDATION_SAVE_PATH_BASE / 'model3_test').resolve()),
-        embedding_model=EMBEDDING_MODEL_NAME,
-        n_neighbours=15,
-        n_components=2,
-        min_cluster_size=29,
-        min_samples=None
-    )
-    config4 = TrialConfig(
-        trial_num=4,
-        trial_desc='testing',
-        model_save_path=str((MODEL_SAVE_PATH_BASE / 'model4_test').resolve()),
-        validation_metric_save_path=str((VALIDATION_SAVE_PATH_BASE / 'model4_test').resolve()),
-        embedding_model=EMBEDDING_MODEL_NAME,
-        n_neighbours=15,
-        n_components=2,
-        min_cluster_size=31,
-        min_samples=None
-    )
-    config5 = TrialConfig(
-        trial_num=5,
-        trial_desc='testing',
-        model_save_path=str((MODEL_SAVE_PATH_BASE / 'model5_test').resolve()),
-        validation_metric_save_path=str((VALIDATION_SAVE_PATH_BASE / 'model5_test').resolve()),
-        embedding_model=EMBEDDING_MODEL_NAME,
-        n_neighbours=15,
-        n_components=2,
-        min_cluster_size=33,
-        min_samples=None
-    )
-    config6 = TrialConfig(
-        trial_num=6,
-        trial_desc='testing',
-        model_save_path=str((MODEL_SAVE_PATH_BASE / 'model6_test').resolve()),
-        validation_metric_save_path=str((VALIDATION_SAVE_PATH_BASE / 'model6_test').resolve()),
-        embedding_model=EMBEDDING_MODEL_NAME,
-        n_neighbours=15,
-        n_components=2,
-        min_cluster_size=35,
-        min_samples=None
-    )
-    config7 = TrialConfig(
-        trial_num=7,
-        trial_desc='testing',
-        model_save_path=str((MODEL_SAVE_PATH_BASE / 'model7_test').resolve()),
-        validation_metric_save_path=str((VALIDATION_SAVE_PATH_BASE / 'model7_test').resolve()),
-        embedding_model=EMBEDDING_MODEL_NAME,
-        n_neighbours=15,
-        n_components=2,
-        min_cluster_size=37,
-        min_samples=None
-    )
-    config8 = TrialConfig(
-        trial_num=8,
-        trial_desc='testing',
-        model_save_path=str((MODEL_SAVE_PATH_BASE / 'model8_test').resolve()),
-        validation_metric_save_path=str((VALIDATION_SAVE_PATH_BASE / 'model8_test').resolve()),
-        embedding_model=EMBEDDING_MODEL_NAME,
-        n_neighbours=15,
-        n_components=2,
-        min_cluster_size=39,
-        min_samples=None
-    )
-    config9 = TrialConfig(
-        trial_num=9,
-        trial_desc='testing',
-        model_save_path=str((MODEL_SAVE_PATH_BASE / 'model9_test').resolve()),
-        validation_metric_save_path=str((VALIDATION_SAVE_PATH_BASE / 'model9_test').resolve()),
-        embedding_model=EMBEDDING_MODEL_NAME,
-        n_neighbours=15,
-        n_components=2,
-        min_cluster_size=41,
-        min_samples=None
-    )
-    config10 = TrialConfig(
-        trial_num=10,
-        trial_desc='testing',
-        model_save_path=str((MODEL_SAVE_PATH_BASE / 'model10_test').resolve()),
-        validation_metric_save_path=str((VALIDATION_SAVE_PATH_BASE / 'model10_test').resolve()),
-        embedding_model=EMBEDDING_MODEL_NAME,
-        n_neighbours=15,
-        n_components=2,
-        min_cluster_size=43,
-        min_samples=None
-    )
-    configs = [config6]
 
     queue = TrialQueue(
         tbl=stbl,
@@ -159,6 +56,7 @@ def main():
         corpus_manager=corpus_manager
     )
     queue.run_queue()
+
 
 def reset():
     # load database
@@ -172,14 +70,12 @@ def reset():
     print(p.count_rows())
     print(s.count_rows())
 
-
 def clean_db():
     # current lance
     loader = Loader(LANCE_PATH, CONTENT_TBL_NAME, LINE_TBL_NAME)
     db, tbl1, tbl2 = loader.connect()
     manager = CorpusManager(tbl1,tbl2)
     manager.clean_lancedb(0)
-
 
     # old lance
     loader2 = Loader(Path.cwd() / 'database', 'content', 'sentence')
