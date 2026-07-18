@@ -16,12 +16,14 @@ from sentence_transformers import SentenceTransformer
 from bertopic import BERTopic 
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.metrics import adjusted_rand_score
 from umap import UMAP
 from hdbscan import HDBSCAN
 from sklearn.feature_extraction.text import CountVectorizer
 
 import itertools
-from typing import Any, List, Union
+from typing import Any, List, Union, Dict
+import json
 
 
 class Modeller:
@@ -202,6 +204,7 @@ class Validator:
             pbar.update(len(uuids))
         pbar.close()
 
+    # save function
     def save_probability_topic_data(self, uuids: list[str], topics, probs):
         payload = [
             {
@@ -216,6 +219,133 @@ class Validator:
             .when_matched_update_all()
             .execute(payload)
         )
+
+    # load function
+    #   AI Generated, need to change later.
+    @classmethod
+    def compile_validation_metrics(
+        cls,
+        target_path: Union[str, Path, List[Union[str, Path]]],
+        output_file: Union[str, Path] = None
+    ) -> pd.DataFrame:
+        """
+        Recursively finds, loads, and flattens 'validation_metric_serialized.json' 
+        files into a single flat Pandas DataFrame for Excel/CSV analysis.
+        
+        Args:
+            target_path: A directory to scan recursively, a specific JSON file, 
+                        or a list of file paths.
+            output_file: Optional path to save the resulting table (.csv or .xlsx).
+            
+        Returns:
+            pd.DataFrame: Flat table with one row per trial configuration.
+        """
+        json_files = []
+
+        # 1. Gather all target JSON files
+        if isinstance(target_path, list):
+            json_files = [Path(p) for p in target_path]
+        else:
+            path = Path(target_path)
+            if path.is_dir():
+                # Recursively search for your serialized metric files
+                json_files = list(path.rglob("validation_metric_serialized.json"))
+                # Fallback to any JSON if the specific name isn't found
+                if not json_files:
+                    json_files = list(path.rglob("*.json"))
+            else:
+                json_files = [path]
+
+        flat_rows = []
+
+        # 2. Parse and flatten each metric file
+        for file_path in json_files:
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    data: Dict[str, Any] = json.load(f)
+                
+                # Basic validation check to ensure it matches your schema
+                if "trial_config" not in data:
+                    continue
+                    
+                config = data["trial_config"]
+                
+                # Build flat dictionary row
+                row = {
+                    # Trial Identifiers
+                    "trial_num": config.get("trial_num"),
+                    "trial_desc": config.get("trial_desc"),
+                    "embedding_model": config.get("embedding_model"),
+                    
+                    # Hyperparameters (Fine-tuning variables)
+                    "umap_seed": config.get("umap_seed"),
+                    "n_neighbours": config.get("n_neighbours"),
+                    "n_components": config.get("n_components"),
+                    "min_cluster_size": config.get("min_cluster_size"),
+                    "min_samples": config.get("min_samples"),
+                    "min_dist": config.get("min_dist"),
+                    
+                    # Evaluation Metrics
+                    "num_topics": data.get("num_topics"),
+                    "total_pairwise_embedding_distance": data.get("total_pairwise_embedding_distance"),
+                    "mean_intertopic_cosine_similarity": data.get("mean_intertopic_cosine_similarity"),
+                    "topic_diversity": data.get("topic_diversity"),
+                    "noise_ratio": data.get("noise_ratio"),
+                    "run_to_run_ARI": data.get("run_to_run_ARI"),
+                    "bootstrap_ARI": data.get("bootstrap_ARI"),
+                    
+                    # Aggregated Complex Metrics
+                    "num_redundant_pairs": len(data.get("redundant_pairs", [])),
+                }
+                
+                # Compute average representative probability across all valid topics
+                prob_data = data.get("topic_prob_data", [])
+                if prob_data:
+                    avg_probs = [t["avg_prob"] for t in prob_data if "avg_prob" in t]
+                    row["mean_topic_probability"] = float(np.mean(avg_probs)) if avg_probs else None
+                else:
+                    row["mean_topic_probability"] = None
+                    
+                # Compute spread of intra-topic coherence
+                pairwise_distances = data.get("topic_pairwise_embedding_distance", [])
+                if pairwise_distances:
+                    row["min_topic_coherence"] = float(np.min(pairwise_distances))
+                    row["max_topic_coherence"] = float(np.max(pairwise_distances))
+                    row["std_topic_coherence"] = float(np.std(pairwise_distances))
+                else:
+                    row["min_topic_coherence"] = None
+                    row["max_topic_coherence"] = None
+                    row["std_topic_coherence"] = None
+
+                flat_rows.append(row)
+
+            except Exception as e:
+                print(f"Skipping file {file_path} due to error: {e}")
+
+        if not flat_rows:
+            print("No valid trial validation metrics were found.")
+            return pd.DataFrame()
+
+        # 3. Create DataFrame and sort by trial number
+        df = pd.DataFrame(flat_rows)
+        df = df.sort_values(by="trial_num").reset_index(drop=True)
+
+        # 4. Save file if destination path is provided
+        if output_file:
+            output_path = Path(output_file)
+            # Ensure target directory exists
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            if output_path.suffix.lower() == ".xlsx":
+                # Writes directly to Excel (requires 'openpyxl' installed)
+                df.to_excel(output_path, index=False, sheet_name="Validation Summary")
+                print(f"Successfully exported {len(df)} trials to Excel: {output_path}")
+            else:
+                # Writes to standard CSV
+                df.to_csv(output_path, index=False)
+                print(f"Successfully exported {len(df)} trials to CSV: {output_path}")
+
+        return df
 
     # return validation metrics
     def get_validation_metrics(self) -> ValidationMetrics:
@@ -241,9 +371,12 @@ class Validator:
         print(f'noise ratio: {noise_ratio}')
 
         # get ARI
+        print('***** STABILITY METRICS *****')
+        run_to_run_ARI, bootstrap_ARI = self.compute_stability_metrics()
+        print(f'run to run stability: {run_to_run_ARI}')
+        print(f'bootstrap stability: {bootstrap_ARI}')
 
         # get bootstrap resampling stability
-
         validation_metrics = ValidationMetrics(
             trial_config=self.trial_config,
             num_topics=num_topics,
@@ -253,7 +386,9 @@ class Validator:
             noise_ratio=noise_ratio,
             topic_pairwise_embedding_distance=pairwise_distance_by_topic,
             topic_prob_data=topic_prob_data,
-            redundant_pairs=redundant_pairs
+            redundant_pairs=redundant_pairs,
+            run_to_run_ARI=run_to_run_ARI,
+            bootstrap_ARI=bootstrap_ARI
         )
         return validation_metrics
     
@@ -418,6 +553,87 @@ class Validator:
             batch_ids = ids[i:i+BATCH_SIZE]
             yield self.tbl.take_row_ids(batch_ids).to_pandas()
 
+    # reproducibility testing
+    # AI Generated, might need to be fixed later.
+    def compute_stability_metrics(self, n_bootstrap: int = 5, n_runs: int = 5, max_samples: int = 2000) -> tuple[float, float]:
+        """
+        Computes Run-to-Run (UMAP Seed) ARI and Bootstrap Resampling ARI 
+        without altering the main model or modifying the database.
+        """
+        # 1. Retrieve already modelled embeddings and their corresponding topics from LanceDB
+        ids = get_ids_by_condition(tbl=self.tbl, query='is_modelled = true')
+        shuffled_ids = shuffle_ids(ids)[0:max_samples]
+        sample_df = pd.concat([df for df in batch_generator(ids=shuffled_ids, tbl=self.tbl, columns=['vector', 'topic'])], ignore_index=True)
+
+        if sample_df.empty or len(sample_df) < 10:
+            return 0.0, 0.0
+
+        embeddings = np.vstack(sample_df['vector'].values)
+        original_labels = sample_df['topic'].values
+        n_docs = len(embeddings)
+
+        # ==========================================
+        # 1. RUN-TO-RUN ARI (Stochastic UMAP Seed Stability)
+        # ==========================================
+        # We run the pipeline on the exact same data using different UMAP seeds 
+        # and compute the pairwise ARI to measure projection stochasticity.
+        run_labels = []
+        for i in range(n_runs):
+            seed = 100 + i
+            labels = self._fast_cluster(embeddings, seed=seed)
+            run_labels.append(labels)
+            
+        ari_scores = []
+        for i in range(len(run_labels)):
+            for j in range(i + 1, len(run_labels)):
+                ari_scores.append(adjusted_rand_score(run_labels[i], run_labels[j]))
+        mean_run_to_run_ari = float(np.mean(ari_scores)) if ari_scores else 1.0
+
+        # ==========================================
+        # 2. BOOTSTRAP RESAMPLING ARI (Data Subset Stability)
+        # ==========================================
+        # We sample with replacement, cluster, and compare results on those 
+        # sampled indices to the main model's original predictions.
+        bootstrap_ari_scores = []
+        for b in range(n_bootstrap):
+            # Generate bootstrap indices
+            boot_indices = np.random.choice(n_docs, size=n_docs, replace=True)
+            boot_embeddings = embeddings[boot_indices]
+            boot_original_labels = original_labels[boot_indices]
+
+            # Fit-predict on bootstrapped embeddings with a static UMAP seed
+            boot_labels = self._fast_cluster(boot_embeddings, seed=42)
+
+            # Measure how stable the original assignments are compared to the resampled run
+            score = adjusted_rand_score(boot_original_labels, boot_labels)
+            bootstrap_ari_scores.append(score)
+
+        mean_bootstrap_ari = float(np.mean(bootstrap_ari_scores)) if bootstrap_ari_scores else 1.0
+
+        return mean_run_to_run_ari, mean_bootstrap_ari
+
+    def _fast_cluster(self, embeddings: np.ndarray, seed: int) -> np.ndarray:
+        """Helper to instantiate and run a clone of the trial's UMAP/HDBSCAN pipeline."""
+        # Initialize fast, multi-threaded UMAP
+        umap_model = UMAP(
+            n_neighbors=self.trial_config.n_neighbours,
+            n_components=self.trial_config.n_components,
+            random_state=seed,
+            n_jobs=-1  # Uses all CPU cores
+        )
+        # Initialize HDBSCAN
+        hdbscan_model = HDBSCAN(
+            min_cluster_size=self.trial_config.min_cluster_size,
+            min_samples=self.trial_config.min_samples,
+            prediction_data=False,
+            core_dist_n_jobs=-1  # Uses all CPU cores
+        )
+        
+        # Pipeline execution
+        reduced_embeddings = umap_model.fit_transform(embeddings)
+        labels = hdbscan_model.fit_predict(reduced_embeddings)
+        return labels
+
     #TODO OPTIMIZE THIS....
     def visualize_documents(self):
         df = self.tbl.search().where('is_validated = true').select(['sentence', 'vector', 'topic']).to_pandas()
@@ -475,6 +691,8 @@ class Trial:
         self.umap_model = UMAP(
             n_neighbors=self.trial_config.n_neighbours,
             n_components=self.trial_config.n_components,
+            min_dist=self.trial_config.min_dist,
+            random_state=self.trial_config.umap_seed
         )
         self.hdbscan_model = HDBSCAN(
             min_cluster_size=self.trial_config.min_cluster_size,

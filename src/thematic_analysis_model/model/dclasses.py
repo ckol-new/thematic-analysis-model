@@ -47,10 +47,12 @@ class TrialConfig(BaseModel):
     model_save_path: str
     validation_metric_save_path: str
     embedding_model: str
+    umap_seed: int = 42
     n_neighbours: int
     n_components: int
     min_cluster_size: int
     min_samples: int | None
+    min_dist: float
 
 # dataclass for the validation metrics of the topic model, for easy serialization.
 class ValidationMetrics(BaseModel):
@@ -63,6 +65,8 @@ class ValidationMetrics(BaseModel):
     topic_pairwise_embedding_distance: list[float]
     redundant_pairs: list[dict]
     topic_prob_data: list[dict]
+    run_to_run_ARI: float
+    bootstrap_ARI: float
 
 
 # adapters

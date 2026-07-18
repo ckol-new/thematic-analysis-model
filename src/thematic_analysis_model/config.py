@@ -19,6 +19,7 @@ NUMBER_OF_SCRAPERS = 20
 
 # validation constants
 MIN_SENTENCE_LEN = 5
+UMAP_SEED = 42
 
 
 # Batch Size Defaults: expeirmentally derived, alter these to test for speed.

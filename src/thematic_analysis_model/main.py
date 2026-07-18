@@ -41,13 +41,15 @@ def main():
     corpus_manager = CorpusManager(tbl1=ptbl, tbl2=stbl)
 
     configs = TrialQueue.generate_trial_configs(
-        model_save_path='models/fine-tuning/{trial_desc}',
-        validation_metric_save_path='validation_metrics/fine-tuning/{trial_desc}',
+        model_save_path='models/fine-tuning/variaton_testing/min_samples_3/{trial_desc}',
+        validation_metric_save_path='validation_metrics/fine-tuning/variation_testing/min_samples_3/{trial_desc}',
         embedding_model='all-MiniLM-L6-v2',
-        n_neighbours=15,
+        umap_seeds = UMAP_SEED,
+        n_neighbours=30,
         n_components=5,
-        min_cluster_size=[20, 25, 27, 30, 32, 35, 37, 40],
-        min_samples=None
+        min_cluster_size=30,
+        min_samples=[3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+        min_dist=0.1
     )
 
     queue = TrialQueue(
@@ -55,8 +57,12 @@ def main():
         configs=configs,
         corpus_manager=corpus_manager
     )
-    queue.run_queue()
+    # queue.run_queue()
 
+    Validator.compile_validation_metrics(
+        target_path=(Path.cwd() / 'validation_metrics' / 'fine-tuning' / 'variation_testing' / 'min_samples_3').resolve(),
+        output_file=(Path.cwd() / 'validation_metrics' / 'data_visualization' / 'variation_testing_min_sample_3.xlsx').resolve()
+    )
 
 def reset():
     # load database
