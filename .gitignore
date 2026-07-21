@@ -7,7 +7,24 @@ wheels/
 *.egg-info
 DS_Store
 
+# configs
+.vscode/
+
 # Virtual environments
 .venv
+
+# database
 .lance_db/
 lance_db/
+.database/
+database/
+.lancedatabase/
+lancedatabase/
+
+# other
+.model/
+model/
+.validation_metrics/
+validation_metrics/
+
+
