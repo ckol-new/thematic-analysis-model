@@ -9,3 +9,4 @@ CONTENT_TBL_NAME = "content"
 SENTENCE_TBL_NAME = "sentence"
 MODEL_OUTPUT_TBL_NAME = "model_output"
 
+EMBEDDING_DIMENSIONS = 384
