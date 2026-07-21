@@ -5,7 +5,7 @@ from thematic_analysis_model.model.manage_data import Loader, CorpusManager, Pro
 from thematic_analysis_model.model.scraping import ALZConnectedScrapingPipeline, DementiaSupportForumScrapingPipeline, Crawler, ScrapingQueue
 from thematic_analysis_model.model.embedding import Embedder
 from thematic_analysis_model.model.modelling import Modeller, Validator, Trial, TrialQueue
-from thematic_analysis_model.model.dclasses import Sentence, Content, TrialConfig
+from thematic_analysis_model.model.dclasses import Sentence, Content, TrialConfig, SchemaTrialOutput
 from thematic_analysis_model.model.util import seed_generator
 from thematic_analysis_model.model_config import topic_model, embed_model
 
@@ -26,18 +26,29 @@ def scraping_a():
     corpus_manager = CorpusManager(tbl1=ptbl, tbl2=stbl)
 
     # 
-
+def temp():
+    # load database
+    loader = Loader(
+        lance_path=LANCE_PATH,
+        tbl1_name=CONTENT_TBL_NAME,
+        tbl2_name=LINE_TBL_NAME,
+        tbl3_name=TRIAL_OUTPUT_TBL_NAME
+    )
+    # loader.first_init(schema1=Content, schema2=Sentence)
+    db, ptbl, stbl, t_tbl = loader.connect()
+    db.create_table('TrialOutput', schema=SchemaTrialOutput, mode='overwrite')
 
 def main():
     # load database
     loader = Loader(
         lance_path=LANCE_PATH,
         tbl1_name=CONTENT_TBL_NAME,
-        tbl2_name=LINE_TBL_NAME
+        tbl2_name=LINE_TBL_NAME,
+        tbl3_name=TRIAL_OUTPUT_TBL_NAME
     )
     # loader.first_init(schema1=Content, schema2=Sentence)
-    db, ptbl, stbl = loader.connect()
-
+    db, ptbl, stbl, t_tbl = loader.connect()
+    
     corpus_manager = CorpusManager(tbl1=ptbl, tbl2=stbl)
 
     configs = TrialQueue.generate_trial_configs(
@@ -48,21 +59,18 @@ def main():
         n_neighbours=30,
         n_components=5,
         min_cluster_size=30,
-        min_samples=[3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+        min_samples=[3, 5, 7],
         min_dist=0.1
     )
 
     queue = TrialQueue(
         tbl=stbl,
+        tbl_output=t_tbl,
         configs=configs,
         corpus_manager=corpus_manager
     )
     # queue.run_queue()
 
-    Validator.compile_validation_metrics(
-        target_path=(Path.cwd() / 'validation_metrics' / 'fine-tuning' / 'variation_testing' / 'min_samples_3').resolve(),
-        output_file=(Path.cwd() / 'validation_metrics' / 'data_visualization' / 'variation_testing_min_sample_3.xlsx').resolve()
-    )
 
 def reset():
     # load database
@@ -88,15 +96,6 @@ def clean_db():
     db, tbl1, tbl2 = loader2.connect()
     manager2 = CorpusManager(tbl1,tbl2)
     manager.clean_lancedb(0)
-
-
-
-
-
-
-
-    
-   
 
 
 

@@ -8,7 +8,7 @@ from tqdm import tqdm
 import gc
 
 from .manage_data import CorpusManager
-from .dclasses import TrialConfig, ValidationMetrics, validation_metrics_adapter
+from .dclasses import TrialConfig, ValidationMetrics, validation_metrics_adapter, SchemaTrialOutput
 from .util import shuffle_ids, batch_generator, get_ids_by_condition
 from ..config import MODELLING_BATCH_SIZE_DEFAULT, EMBEDDING_MODEL_NAME, FILE_IO_BATCH_SIZE_DEFUALT
 
@@ -24,6 +24,8 @@ from sklearn.feature_extraction.text import CountVectorizer
 import itertools
 from typing import Any, List, Union, Dict
 import json
+from datetime import datetime, date
+import uuid
 
 
 class Modeller:
@@ -115,12 +117,12 @@ class Modeller:
         return model
 
 class Validator:
-    def __init__(self, tbl: lancedb.Table, topic_model: BERTopic, embedding_model: SentenceTransformer, validation_save_path: Path, trial_config: TrialConfig):
+    def __init__(self, tbl: lancedb.Table, tbl_output: lancedb.Table, topic_model: BERTopic, embedding_model: SentenceTransformer,  trial_config: TrialConfig):
         self.tbl = tbl
+        self.tbl_output = tbl_output
         self.topic_model = topic_model
         self.topic_model.calculate_probabilities = True
         self.embedding_model = embedding_model
-        self.validation_save_path = validation_save_path
         self.trial_config = trial_config
 
     # validate
@@ -136,9 +138,6 @@ class Validator:
         validation_metric = self.get_validation_metrics()
         
         # get figures
-        # serialize validation metrics + figures
-        self.validation_save_path.mkdir(parents=True, exist_ok=True)
-        self.save_validation_metrics(validation_metrics=validation_metric)
 
         # Determine the number of valid topics (excluding outliers)
         topic_ids = self.topic_model.get_topics().keys()
@@ -151,9 +150,9 @@ class Validator:
             print('visualize topics')
             try:
                 fig1 = self.topic_model.visualize_topics()
-                fig1.write_html(self.validation_save_path / 'topic_map.html')
             except Exception as e:
                 print(f"Could not generate topic map: {e}")
+                fig1 = None
         else:
             print("Skipping topic map (no valid topics found).")
 
@@ -162,16 +161,16 @@ class Validator:
             print('visualize heat map')
             try:
                 fig2 = self.topic_model.visualize_heatmap()
-                fig2.write_html(self.validation_save_path / 'topic_heatmap.html')
             except Exception as e:
                 print(f"Could not generate topic heatmap: {e}")
+                fig2 = None
 
             print('visualize hierarchy')
             try:
                 fig4 = self.topic_model.visualize_hierarchy()
-                fig4.write_html(self.validation_save_path / 'topic_hierarchy.html')
             except Exception as e:
                 print(f"Could not generate topic hierarchy: {e}")
+                fig4 = None
         else:
             print("Skipping heatmap and hierarchy plots (requires at least 2 valid topics).")
 
@@ -180,10 +179,28 @@ class Validator:
         print('visualize documents')
         try:
             fig3 = self.visualize_documents()
-            fig3.write_html(self.validation_save_path / 'document_map.html')
         except Exception as e:
             print(f"Could not generate document map: {e}")
+            fig3 = None
         '''
+
+        # save to lance
+        trial_output = SchemaTrialOutput(
+            trial_config=self.trial_config,
+            validation_metrics=str(validation_metrics_adapter.dump_json(validation_metric)),
+            all_topic_prob_histogram=None,
+            list_topic_prob_histogram=None,
+            topic_map=str(fig1.to_json),
+            topic_heatmap=str(fig2.to_json()),
+            topic_hierarchy=str(fig4.to_json),
+            document_map=None,
+            date=str(date.today()),
+            uuid=str(uuid.uuid4())
+        )
+        self.tbl_output.add([trial_output])
+
+
+
 
     # recover probabilities + topics
     def transform_model(self, ids: list[int], BATCH_SIZE: int = MODELLING_BATCH_SIZE_DEFAULT):
@@ -644,10 +661,6 @@ class Validator:
         fig = self.topic_model.visualize_documents(docs=docs, embeddings=embeddings, hide_annotations=True, hide_document_hover=True)
         return fig
 
-    def save_validation_metrics(self, validation_metrics: ValidationMetrics):
-        with (self.validation_save_path / 'validation_metric_serialized.json').open(mode='w', encoding='utf-8') as f:
-            f.write(validation_metrics_adapter.dump_json(validation_metrics, indent=4).decode('utf-8'))
-
 # class for visualizing and generated plots
 #   Validator will own a visualizer
 class Visualizer:
@@ -675,12 +688,12 @@ class Visualizer:
 
 
 class Trial:
-    def __init__(self, trial_config: TrialConfig, tbl: lancedb.Table, corpus_manager: CorpusManager, model_save_path: Path, validation_metric_save_path: Path):
+    def __init__(self, trial_config: TrialConfig, tbl: lancedb.Table, tbl_output: lancedb.Table, corpus_manager: CorpusManager, model_save_path: Path):
         self.trial_config = trial_config
         self.tbl = tbl
+        self.tbl_output = tbl_output
         self.corpus_manager = corpus_manager
         self.model_save_path = model_save_path
-        self.validation_metric_save_path = validation_metric_save_path
 
     def run_trial(self):
         # load models
@@ -702,9 +715,9 @@ class Trial:
         # validate
         validator = Validator(
             tbl=self.tbl,
+            tbl_output=self.tbl_output,
             topic_model=merged_model,
             embedding_model=self.embedding_model,
-            validation_save_path=self.validation_metric_save_path,
             trial_config=self.trial_config
         )
         validation_metric = validator.validate()
@@ -734,9 +747,10 @@ class Trial:
         )
 
 class TrialQueue:
-    def __init__(self, tbl: lancedb.Table, configs: list[TrialConfig], corpus_manager: CorpusManager):
+    def __init__(self, tbl: lancedb.Table, tbl_output: lancedb.Table, configs: list[TrialConfig], corpus_manager: CorpusManager):
         self.configs = configs
         self.tbl = tbl
+        self.tbl_output = tbl_output
         self.corpus_manager = corpus_manager
 
     # run queue
@@ -748,15 +762,14 @@ class TrialQueue:
 
             # get model and validation metric save paths
             model_save_path: Path = Path(config.model_save_path)
-            validation_metric_save_path: Path = Path(config.validation_metric_save_path)
 
             # run trial
             trial = Trial(
                 trial_config=config,
                 tbl=self.tbl,
+                tbl_output=self.tbl_output,
                 corpus_manager=self.corpus_manager,
                 model_save_path=model_save_path,
-                validation_metric_save_path=validation_metric_save_path
             )
             trial.run_trial()
 

@@ -7,6 +7,7 @@ from pathlib import Path
 LANCE_PATH: Path = Path.cwd() / 'lancedatabase'
 CONTENT_TBL_NAME = 'content'
 LINE_TBL_NAME = 'lines'
+TRIAL_OUTPUT_TBL_NAME = 'TrialOutput'
 
 MODEL_SAVE_PATH_BASE = Path.cwd() / 'models' / 'testing'
 VALIDATION_SAVE_PATH_BASE = Path.cwd() / 'validation_metrics' / 'testing'

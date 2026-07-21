@@ -45,7 +45,6 @@ class TrialConfig(BaseModel):
     trial_num: int
     trial_desc: str
     model_save_path: str
-    validation_metric_save_path: str
     embedding_model: str
     umap_seed: int = 42
     n_neighbours: int
@@ -72,3 +71,17 @@ class ValidationMetrics(BaseModel):
 # adapters
 trial_config_adapter = TypeAdapter(TrialConfig)
 validation_metrics_adapter = TypeAdapter(ValidationMetrics)
+
+# schema for output of a given trial
+class SchemaTrialOutput(LanceModel):
+    # trial config
+    trial_config: TrialConfig # dict of trial config
+    validation_metrics: str # json dumped string of validation_metrics
+    all_topic_prob_histogram: str | None # json str of chart
+    list_topic_prob_histogram: list[str] | None # json str of chart
+    topic_map: str | None
+    topic_heatmap: str | None
+    topic_hierarchy: str | None
+    document_map: str | None
+    date: str
+    uuid: str
