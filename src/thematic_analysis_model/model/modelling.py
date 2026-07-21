@@ -648,6 +648,31 @@ class Validator:
         with (self.validation_save_path / 'validation_metric_serialized.json').open(mode='w', encoding='utf-8') as f:
             f.write(validation_metrics_adapter.dump_json(validation_metrics, indent=4).decode('utf-8'))
 
+# class for visualizing and generated plots
+#   Validator will own a visualizer
+class Visualizer:
+    def __init__(self, tbl: lancedb.Table, topic_model: BERTopic):
+        self.tbl = tbl
+        self.topic_model = topic_model
+
+    # visualize topic probability as histogram in total
+    def topic_histogram_total(self):
+        return
+
+    # visualize topic probability as histogram by each topic
+    def topic_histogram(self):
+        return
+
+    # generate line diagram
+    def parameter_line_diagram(self):
+        return
+
+    # get avg + SD
+    def average_and_SD(self):
+        return 
+
+
+
 
 class Trial:
     def __init__(self, trial_config: TrialConfig, tbl: lancedb.Table, corpus_manager: CorpusManager, model_save_path: Path, validation_metric_save_path: Path):
