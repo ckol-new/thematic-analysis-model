@@ -22,8 +22,8 @@ database/
 lancedatabase/
 
 # other
-.model/
-model/
+.models/
+models/
 .validation_metrics/
 validation_metrics/
 
