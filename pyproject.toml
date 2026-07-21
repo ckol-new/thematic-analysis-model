@@ -12,7 +12,11 @@ dependencies = [
     "bertopic>=0.17.4",
     "httpx>=0.28.1",
     "lancedb>=0.33.0",
+    "openpyxl>=3.1.5",
+    "plotly>=6.8.0",
     "sentence-transformers>=5.5.1",
+    "streamlit>=1.60.0",
+    "xxhash>=3.8.1",
 ]
 
 [build-system]
