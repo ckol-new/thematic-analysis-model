@@ -85,3 +85,5 @@ class SchemaTrialOutput(LanceModel):
     document_map: str | None
     date: str
     uuid: str
+
+trial_output_adapter = TypeAdapter(SchemaTrialOutput)

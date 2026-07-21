@@ -70,6 +70,7 @@ def main():
         corpus_manager=corpus_manager
     )
     # queue.run_queue()
+    print(t_tbl.to_pandas()['trial_config'].to_list())
 
 
 def reset():

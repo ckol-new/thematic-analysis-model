@@ -8,7 +8,7 @@ from tqdm import tqdm
 import gc
 
 from .manage_data import CorpusManager
-from .dclasses import TrialConfig, ValidationMetrics, validation_metrics_adapter, SchemaTrialOutput
+from .dclasses import TrialConfig, ValidationMetrics, validation_metrics_adapter, SchemaTrialOutput, trial_output_adapter
 from .util import shuffle_ids, batch_generator, get_ids_by_condition
 from ..config import MODELLING_BATCH_SIZE_DEFAULT, EMBEDDING_MODEL_NAME, FILE_IO_BATCH_SIZE_DEFUALT
 
@@ -668,12 +668,17 @@ class Visualizer:
         self.tbl = tbl
         self.topic_model = topic_model
 
+    # get trial of relevance
+    def get_trial(self, trial_name: str) -> SchemaTrialOutput:
+        ...
+
     # visualize topic probability as histogram in total
     def topic_histogram_total(self):
         return
 
     # visualize topic probability as histogram by each topic
     def topic_histogram(self):
+
         return
 
     # generate line diagram
