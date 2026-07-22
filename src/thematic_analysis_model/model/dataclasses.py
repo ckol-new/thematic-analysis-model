@@ -11,6 +11,7 @@ class Metadata(BaseModel): # metaedata of content, not of individual sentence, m
     date_accessed: str
     forum_origin: str
     username: str | None = None
+    type_: str
 
 class Content(LanceModel):
     uuid_: str # unique identifier separate from content
@@ -30,7 +31,7 @@ class Sentence(LanceModel):
     metadata_: Metadata
     sentence: str
     embedding: Vector(dim=EMBEDDING_DIMENSIONS) | None = None
-    reduced_embedding: list[float] # I want to be able to change this later, so it has to be dynamic array
+    reduced_embedding: list[float] | None = None # I want to be able to change this later, so it has to be dynamic array
     # bool flags
     is_embedded: bool = False
     is_modelled: bool = False
