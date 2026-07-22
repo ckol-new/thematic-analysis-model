@@ -48,9 +48,8 @@ class Loader:
 class Manager:
     # 
     def __init__(self, loader: Loader):
-        self.loader = loader # loader to access data
-        self.tbl1, self.tbl2, self.tbl3 = self.loader.connect_all() 
-        self.tbl1.name
+        self.__loader = loader # loader to access data
+        self.tbl1, self.tbl2, self.tbl3 = self.__loader.connect_all() 
 
     def check_tbl_name(self, tbl_name: str) -> lancedb.Table:
         # get relevant table

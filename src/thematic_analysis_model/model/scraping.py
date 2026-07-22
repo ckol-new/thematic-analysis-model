@@ -11,6 +11,7 @@ import gc
 import xxhash
 import datetime
 import uuid
+import codecs
 
 # Web scraping and crawling. Text processing. Validation
 #   Scraping is Asynchronous
@@ -19,8 +20,8 @@ import uuid
 #   Extend the ScrapingPipeline to contain relevant methods for each forum
 
 class ScrapingPipeline:
-    def __init__(self, loader: Loader, manager: Manager, num_crawlers: int, num_scrapers: int, verbose: bool = False):
-        self.forum_origin = None
+    def __init__(self, loader: Loader, manager: Manager, num_crawlers: int, num_scrapers: int, forum_origin: str, verbose: bool = False):
+        self.forum_origin = forum_origin
         self.loader = loader
         self.manager = manager
         self.content_tbl = self.loader.connect(name=CONTENT_TBL_NAME)
@@ -30,7 +31,7 @@ class ScrapingPipeline:
         self.verbose = verbose
 
     # main entry
-    async def run_pipeline(self, seeds: list[str], verbose: bool = False):
+    async def run_pipeline(self, seeds: list[str]):
         # initiatilize async queues
         #   seed queue is for seed nodes
         #   crawl_queue is for results of crawling, to be scraped from
@@ -40,10 +41,10 @@ class ScrapingPipeline:
         save_queue = asyncio.Queue()
 
         # crawl
-        asyncio.run(self.run_crawler(seeds=seeds, seed_queue=seed_queue, crawl_queue=crawl_queue))
+        await self.run_crawler(seeds=seeds, seed_queue=seed_queue, crawl_queue=crawl_queue)
 
         # scrape
-        asyncio.run(self.run_scraper(crawl_queue=crawl_queue, save_queue=save_queue))
+        await self.run_scraper(crawl_queue=crawl_queue, save_queue=save_queue)
 
 
     # run crawler
@@ -57,7 +58,7 @@ class ScrapingPipeline:
             NUM_CRAWLERS=self.num_crawlers
         )
         # populates mutable crawl queue as it runs
-        crawler.run_crawler(
+        await crawler.run_crawler(
             verbose=self.verbose
         )
 
@@ -71,7 +72,7 @@ class ScrapingPipeline:
             scrape_func=self.scrape,
             NUM_SCRAPERS=self.num_scrapers
         )
-        scraper.run_scraper(verbose=self.verbose)
+        await scraper.run_scraper(verbose=self.verbose)
         ...
 
     # request page
@@ -114,6 +115,15 @@ class ScrapingPipeline:
     @classmethod
     def seed_generator(cls, prefix: str, start: int, stop: int, suffix: str) -> list[str]:
         return [str(prefix + str(i) + suffix) for i in range(start, stop + 1)]
+
+    @classmethod
+    def crawl(cls, soup):
+        ...
+
+    @classmethod
+    def scrape(cls, soup, url, origin):
+        ...
+
 
 
 # Crawler class
@@ -164,27 +174,29 @@ class Crawler:
             print(f"Initializing asynchronous crawler #{id_}")
 
         # crawl
-        while True:
-            # get url
-            url = self.seed_queue.get_nowait()
+        try:
+            while True:
+                # get url
+                url = await self.seed_queue.get()
 
-            try:
-                # request page
-                soup = await ScrapingPipeline.request_page(url=url, verbose=verbose)
+                try:
+                    # request page
+                    soup = await ScrapingPipeline.request_page(url=url, client=self.client, verbose=verbose)
 
-                # crawl page
-                # add to crawl queue
-                crawl_nodes: list[str] = self.crawl_func(soup=soup)
-                if len(crawl_nodes) == 0 or not crawl_nodes: continue
-                [self.crawl_queue.put_nowait(crawl_node) for crawl_node in crawl_nodes if crawl_node]
-            except Exception as e:
-                if verbose:
-                    print(f"Unknown parsing error at url: {url} -> {e}")
-            finally:
-                # update
-                self.seed_queue.task_done()
-                self.pbar.update(1)
-
+                    # crawl page
+                    # add to crawl queue
+                    crawl_nodes: list[str] = self.crawl_func(soup=soup)
+                    if not crawl_nodes or len(crawl_nodes) == 0: continue
+                    [self.crawl_queue.put_nowait(crawl_node) for crawl_node in crawl_nodes if crawl_node]
+                except Exception as e:
+                    if verbose:
+                        print(f"Unknown parsing error at url: {url} -> {e}")
+                finally:
+                    # update
+                    self.seed_queue.task_done()
+                    self.pbar.update(1)
+        except asyncio.CancelledError:
+            return
 
 # Scraper
 #   Asynchronously scrape, error catch, deduplicate
@@ -231,28 +243,34 @@ class Scraper:
             print(f"Initializing asynchronous scraper number {id_}")
 
         # until cancel, run scraper
-        while True:
-            # get url from crawl queue
-            url: str = self.crawl_queue.get_nowait()
+        try:
+            while True:
+                # pause to let saver work if necessary
+                if self.save_queue.qsize() >= SAVER_BATCH_SIZE:
+                    await asyncio.sleep(0) # let saver work
 
-            try:
-                # request page and add to save queue
-                soup = await ScrapingPipeline.request_page(url=url, verbose=verbose)
-                contents: list[Content] = self.scrape_func(soup=soup) # scrape function of scraping pipeline subclass
-                if len(contents) == 0 or not contents:
-                    continue
-                [self.save_queue.put_nowait(content) for content in contents if content]
+                # get url from crawl queue
+                url: str = await self.crawl_queue.get()
 
-            except ValidationError as v:
-                if verbose:
-                    print(f"Validation error at url: {url} -> {v}")
-            except Exception as e:
-                if verbose:
-                    print(f"Exception at url: {url} -> {e}")
-            finally:
-                self.crawl_queue.task_done()
-                self.pbar.update(1)
-        ...
+                try:
+                    # request page and add to save queue
+                    soup = await ScrapingPipeline.request_page(url=url, client=self.client, verbose=verbose)
+                    contents: list[Content] = self.scrape_func(soup=soup, url=url, origin=self.forum_origin) # scrape function of scraping pipeline subclass
+                    if not contents or len(contents) == 0:
+                        continue
+                    [self.save_queue.put_nowait(content) for content in contents if content]
+
+                except ValidationError as v:
+                    if verbose:
+                        print(f"Validation error at url: {url} -> {v}")
+                except Exception as e:
+                    if verbose:
+                        print(f"Exception at url: {url} -> {e}")
+                finally:
+                    self.crawl_queue.task_done()
+                    self.pbar.update(1)
+        except asyncio.CancelledError:
+            return
     
     # asyncrononous saver
     async def async_saver(self, SAVE_BATCH_SIZE: int = SAVER_BATCH_SIZE, verbose: bool = False):
@@ -267,6 +285,8 @@ class Scraper:
             # check if sentinel value -> None
             if not item:
                 self.deduplicate_save_batch(batch=save_batch)
+                self.save_queue.task_done()
+                break
 
 
             # add to save batch
@@ -294,10 +314,10 @@ class Scraper:
 
         batch.clear()
         gc.collect()
-
+# class for processing and validating text
 class Processor:
     @classmethod
-    def clean_text(text=str) -> str:
+    def clean_text(cls, text=str) -> str:
         if not text:
             return None
         # two step decoding for double escape
@@ -315,8 +335,8 @@ class Processor:
 
 # alzconnected specific scraping pipeline
 class alzconnectedScrapingPipeline(ScrapingPipeline):
-    def __init__(self, loader: Loader, manager: Manager, num_crawlers: int, num_scrapers: int, verbose: bool):
-        super().__init__(self, loader=loader, manager=manager, num_crawlers=num_crawlers, num_scrapers=num_scrapers, verbose=verbose)
+    def __init__(self, loader: Loader, manager: Manager, num_crawlers: int, num_scrapers: int, forum_origin: str, verbose: bool):
+        super().__init__(loader=loader, manager=manager, num_crawlers=num_crawlers, num_scrapers=num_scrapers, forum_origin=forum_origin, verbose=verbose)
 
      # crawl page
     @classmethod
@@ -335,7 +355,7 @@ class alzconnectedScrapingPipeline(ScrapingPipeline):
         if not post:
             return None
 
-        parent_uuid: str = post.uuid
+        parent_uuid: str = post.uuid_
 
         # get comments
         comments: list[Content] = []
@@ -408,7 +428,7 @@ class alzconnectedScrapingPipeline(ScrapingPipeline):
         
         # misc
         hash_: str = xxhash.xxh64(url).hexdigest()
-        date_accessed: str = str(datetime.date.today)
+        date_accessed: str = str(datetime.date.today())
         my_uuid: str = str(uuid.uuid4())
         uuid_parent = parent_uuid
         content_type: str = 'comment'
@@ -480,5 +500,5 @@ class alzconnectedScrapingPipeline(ScrapingPipeline):
 
 # dementia support forum scraping pipeline
 class dementiasupportforumScrapingPipeline(ScrapingPipeline):
-    def __init__(self, loader: Loader, manager: Manager, num_crawlers: int, num_scrapers: int, verbose: bool):
-        super().__init__(self, loader=loader, manager=manager, num_crawlers=num_crawlers, num_scrapers=num_scrapers, verbose=verbose)
+    def __init__(self, loader: Loader, manager: Manager, num_crawlers: int, num_scrapers: int, forum_origin: str, verbose: bool):
+        super().__init__(loader=loader, manager=manager, num_crawlers=num_crawlers, num_scrapers=num_scrapers, forum_origin=forum_origin, verbose=verbose)
