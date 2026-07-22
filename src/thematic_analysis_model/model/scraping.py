@@ -1,7 +1,9 @@
 from .data_management import Loader, Manager
-from .config import CONTENT_TBL_NAME, NUM_CRAWLERS, NUM_SCRAPERS
+from .config import CONTENT_TBL_NAME, NUM_CRAWLERS, NUM_SCRAPERS, SAVER_BATCH_SIZE
+from .dataclasses import Content
 
 import asyncio
+from pydantic import ValidationError
 import httpx
 from bs4 import BeautifulSoup
 from tqdm import tqdm
@@ -13,16 +15,18 @@ from tqdm import tqdm
 #   Extend the ScrapingPipeline to contain relevant methods for each forum
 
 class ScrapingPipeline:
-    def __init__(self, loader: Loader, manager: Manager, num_crawlers: int, num_scrapers: int):
+    def __init__(self, loader: Loader, manager: Manager, num_crawlers: int, num_scrapers: int, verbose: bool = False):
+        self.forum_origin = None
         self.loader = loader
         self.manager = manager
         self.content_tbl = self.loader.connect(name=CONTENT_TBL_NAME)
 
         self.num_crawlers = num_crawlers
         self.num_scrapers = num_scrapers
+        self.verbose = verbose
 
     # main entry
-    async def run_pipeline(self, seeds: list[str]):
+    async def run_pipeline(self, seeds: list[str], verbose: bool = False):
         # initiatilize async queues
         #   seed queue is for seed nodes
         #   crawl_queue is for results of crawling, to be scraped from
@@ -40,7 +44,18 @@ class ScrapingPipeline:
 
     # run crawler
     async def run_crawler(self, seeds: list[str], seed_queue: asyncio.Queue, crawl_queue: asyncio.Queue):
-        ...
+        crawler = Crawler(
+            forum_origin=self.forum_origin,
+            seeds=seeds,
+            seed_queue=seed_queue,
+            crawl_queue=crawl_queue,
+            crawl_func=self.crawl(), # subclasses own implementation
+            NUM_CRAWLERS=self.num_crawlers
+        )
+        # populates mutable crawl queue as it runs
+        crawler.run_crawler(
+            verbose=self.verbose
+        )
 
     # run scraper
     async def run_scraper(self, crawl_queue: asyncio.Queue, save_queue: asyncio.Queue):
@@ -83,33 +98,26 @@ class ScrapingPipeline:
             if verbose:
                 print(f"Error in requesting page: {url} -> {e}")
 
-    # abstract methods
-    @classmethod
-    def crawl(cls, soup: BeautifulSoup):
-        ...
-
-    @classmethod
-    def scrape(cls, soup: BeautifulSoup):
-        ...
 
 # Crawler class
 #   Asynchronously crawls list of seed nodes (forum index pages), generating list of crawl nodes (urls to crawl from)
 #   Deduplication of crawl nodes
 #   Requires you pass it the specific crawl function for its forum type
 class Crawler:
-    def __init__(self, seeds: list[str], seed_queue: asyncio.Queue, crawl_queue: asyncio.Queue, crawl_func,  NUM_CRAWLERS: int = NUM_CRAWLERS):
+    def __init__(self, forum_origin: str, seeds: list[str], seed_queue: asyncio.Queue, crawl_queue: asyncio.Queue, crawl_func,  NUM_CRAWLERS: int = NUM_CRAWLERS):
+        self.forum_origin = forum_origin
         self.seeds = seeds
         self.seed_queue = seed_queue
         self.crawl_queue = crawl_queue
         self.crawl_func = crawl_func
 
     # main entry 
-    async def run_crawler(self):
+    async def run_crawler(self, verbose: bool = False):
         # poplate seed queue w/ seeds: seed queue is now full
         [self.seed_queue.put_nowait(seed) for seed in self.seeds]
 
         # get pbar
-        self.pbar = tqdm(total=self.seed_queue.qsize(), desc='CRAWLING', unit='URLs')
+        self.pbar = tqdm(total=self.seed_queue.qsize(), desc=f'CRAWLING {self.forum_origin}', unit='URLs')
 
         # get async client: time out set to 15
         # get taskgroup
@@ -118,13 +126,15 @@ class Crawler:
         async with httpx.AsyncClient(timeout=15.0) as self.client:
             async with asyncio.TaskGroup() as tg:
                 # get workers: async crawlers
-                workers = [tg.create_task(self.async_crawler(id_=i)) for i in range(1, NUM_CRAWLERS + 1)]
+                workers = [tg.create_task(self.async_crawler(id_=i, verbose=verbose)) for i in range(1, NUM_CRAWLERS + 1)]
 
                 # await for seed queue to be cleared
                 await self.seed_queue.join()
 
                 # cancel workers
                 [worker.cancel() for worker in workers]
+
+        self.pbar.close()
 
         return self.crawl_queue
 
@@ -157,4 +167,78 @@ class Crawler:
                 # update
                 self.seed_queue.task_done()
                 self.pbar.update(1)
+
+
+# Scraper
+#   Asynchronously scrape, error catch, deduplicate
+class Scraper:
+    def __init__(self, forum_origin: str, crawl_queue: asyncio.Queue, save_queue: asyncio.Queue, scrape_func, NUM_SCRAPERS: int = NUM_SCRAPERS):
+        self.forum_origin = forum_origin
+        self.crawl_queue = crawl_queue
+        self.save_queue = save_queue
+        self.scrape_func = scrape_func
+        self.NUM_SCRAPERS = NUM_SCRAPERS
+
+    # main entry
+    async def run_scraper(self, verbose: bool = False):
+        # get pbar
+        self.pbar = tqdm(total=self.crawl_queue.qsize(), desc=f'SCRAPING {self.forum_origin}', unit='URLs')
+
+        # get async client
+        # get task group
+        # get workers
+        async with httpx.AsyncClient(timeout=15.0) as self.client:
+            async with asyncio.TaskGroup() as tg:
+                # get scraper workers
+                workers = [tg.create_task(self.async_scraper(i)) for i in range(1, NUM_SCRAPERS + 1)]
+                saver = tg.create_task(self.async_saver())
+
+                # await for scraping to be finished
+                await self.crawl_queue.join()
+                # add sentinel value to tell saver to stop
+                self.save_queue.put_nowait(None)
+
+                # await for saving to be finished
+                await self.save_queue.join()
+
+                # cancel workers
+                [worker.cancel() for worker in workers]
+                saver.cancel()
+
+        self.pbar.close()
+
+    # asynchronous scraper
+    async def async_scraper(self, id_: int, verbose: bool = False):
+        if verbose:
+            print(f"Initializing asynchronous scraper number {id_}")
+
+        # until cancel, run scraper
+        while True:
+            # get url from crawl queue
+            url: str = self.crawl_queue.get_nowait()
+
+            try:
+                # request page and add to save queue
+                soup = await ScrapingPipeline.request_page(url=url, verbose=verbose)
+                contents: list[Content] = self.scrape_func(soup=soup) # scrape function of scraping pipeline subclass
+                if len(contents) == 0 or not contents:
+                    continue
+                [self.save_queue.put_nowait(content) for content in contents if content]
+
+            except ValidationError as v:
+                if verbose:
+                    print(f"Validation error at url: {url} -> {v}")
+            except Exception as e:
+                if verbose:
+                    print(f"Exception at url: {url} -> {e}")
+            finally:
+                self.crawl_queue.task_done()
+                self.pbar.update(1)
+        ...
+    
+    # asyncrhonous saver
+    async def async_saver(self, SAVE_BATCH_SIZE: int = SAVER_BATCH_SIZE, verbose: bool = False):
+        if verbose:
+            print('Initializing saver')
+
         ...
