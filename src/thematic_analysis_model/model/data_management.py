@@ -1,9 +1,10 @@
 # managing data: Loading data, cleaning database
 #   while other classes can interact with the data, update the data, and read from data, this is more for general data management.
-from .config import DATABASE_PATH, CONTENT_TBL_NAME, SENTENCE_TBL_NAME, MODEL_OUTPUT_TBL_NAME
+from .config import DATABASE_PATH, CONTENT_TBL_NAME, SENTENCE_TBL_NAME, MODEL_OUTPUT_TBL_NAME, FILE_IO_BATCH_SIZE
 from .dataclasses import Content, Sentence, ModelOutput
 
 import lancedb
+import pandas as pd
 import random
 from pathlib import Path
 
@@ -51,9 +52,7 @@ class Manager:
         self.tbl1, self.tbl2, self.tbl3 = self.loader.connect_all() 
         self.tbl1.name
 
-    # retrieve rowids by condition and/or limit
-    #   optional shuffling
-    def retrieve_rowids(self, tbl_name: str, condition: str | None = None, limit: int | None = None, shuffle: bool = False) -> list[int]:
+    def check_tbl_name(self, tbl_name: str) -> lancedb.Table:
         # get relevant table
         if self.tbl1.name == tbl_name:
             tbl = self.tbl1
@@ -63,6 +62,13 @@ class Manager:
             tbl = self.tbl2
         else: 
             raise Exception(f'Error; no table of name {tbl_name} in lance')
+
+        return tbl
+
+    # retrieve rowids by condition and/or limit
+    #   optional shuffling
+    def retrieve_rowids(self, tbl_name: str, condition: str | None = None, limit: int | None = None, shuffle: bool = False) -> list[int]:
+        tbl = self.check_tbl_name(tbl_name=tbl_name)
 
         # check if limit
         if not limit:
@@ -79,11 +85,33 @@ class Manager:
             random.shuffle(ids)
 
         return ids
-            
-
 
     # retrieve data in batches (generator)
     #   optional shuffling, limits, and column conditions
+    #   returns dataframes
+    def batch_generator(self, tbl_name: str, condition: str | None = None, limit: int | None = None, shuffle: bool = False, columns: list[str] | None = None, BATCH_SIZE: int = FILE_IO_BATCH_SIZE) -> pd.DataFrame:
+        # get relevant tbl
+        tbl = self.check_tbl_name(tbl_name=tbl_name)
+
+        # get ids (by condition, by limit, optionally shuffled)
+        ids: list[int] = self.retrieve_rowids(
+            tbl_name=tbl_name,
+            condition=condition,
+            limit=limit,
+            shuffle=shuffle
+        )
+
+        # yield in batches
+        #   paginate through ids, and return
+        for i in range(0, len(ids), BATCH_SIZE):
+            batch_ids = ids[i:i+BATCH_SIZE]
+
+            # check which columns to retrieve
+            if not columns:
+                batch_df = tbl.take_row_ids(batch_ids).to_pandas()
+            else:
+                batch_df = tbl.take_row_ids(batch_ids).select(columns).to_pandas()
+            yield batch_df
 
 
     # 
