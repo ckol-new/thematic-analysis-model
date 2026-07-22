@@ -50,9 +50,38 @@ class ScrapingPipeline:
     #   Error catching
     #   If verbose is true, it tells you the errors instead of staying silent
     @classmethod
-    def request_page(cls, url: str, verbose: bool = False) -> BeautifulSoup:
-        soup = None
-        return soup
+    async def request_page(cls, url: str, client: httpx.AsyncClient, verbose: bool = False, headers: dict | None = None) -> BeautifulSoup:
+        if not headers:
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
+            }
+
+        try:
+            response = await client.get(url=url, headers=headers)
+
+            if verbose:
+                if response.status_code not in [200, 301, 303]:
+                    print(f"Issue with response status at page: {url} -> {response.status_code}")
+
+            soup = BeautifulSoup(response.text, 'html.parser')
+
+            return soup
+        
+        # error catch/process
+        # AI generated
+        except BaseException as e:
+            if verbose:
+                print(f'💥 Caught at {url}! Exception Type: {type(e).__name__} -> Message: {e}')
+        
+            # CRITICAL: If it is a CancelledError, you MUST re-raise it so the 
+            # event loop can clean up the task properly.
+            if type(e).__name__ == "CancelledError":
+                raise
+        except Exception as e:
+            if verbose:
+                print(f"Error in requesting page: {url} -> {e}")
 
     # abstract methods
     @classmethod
