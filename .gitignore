@@ -20,6 +20,8 @@ lance_db/
 database/
 .lancedatabase/
 lancedatabase/
+.db/
+db/
 
 # other
 .models/
