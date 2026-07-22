@@ -44,7 +44,7 @@ class Loader:
 # Manager class:
 #   Manages data, updates boolean flags, clears history to save space.
 #   Manager can be passed to classes that require ability to alter database state, at a broad level.
-#   Updates tables
+#   Anything that wants to interface with the data, goes through the manager.
 class Manager:
     # 
     def __init__(self, loader: Loader):
@@ -113,8 +113,24 @@ class Manager:
                 batch_df = tbl.take_row_ids(batch_ids).select(columns).to_pandas()
             yield batch_df
 
+    # when not matching on column, insert data.
+    #   for deduplication mostly
+    def deduplicate_insert(self, tbl_name: str, key: str, data: list[dict]):
+        tbl = self.check_tbl_name(tbl_name=tbl_name)
+        (
+            tbl.merge_insert(on=key)
+            .when_not_matched_insert_all()
+            .execute(data)
+        )
 
-    # 
+    # when data matches key, update the following rows according to data
+    def matched_update(self, tbl_name: str, key: str, data: list[dict]):
+        tbl = self.check_tbl_name(tbl_name=tbl_name)
+        (
+            tbl.merge_insert(on=key)
+            .when_matched_update_all()
+            .execute(data)
+        )
 
 
 

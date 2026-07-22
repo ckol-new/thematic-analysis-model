@@ -7,6 +7,7 @@ from pydantic import ValidationError
 import httpx
 from bs4 import BeautifulSoup
 from tqdm import tqdm
+import gc
 
 # Web scraping and crawling. Text processing. Validation
 #   Scraping is Asynchronous
@@ -49,7 +50,7 @@ class ScrapingPipeline:
             seeds=seeds,
             seed_queue=seed_queue,
             crawl_queue=crawl_queue,
-            crawl_func=self.crawl(), # subclasses own implementation
+            crawl_func=self.crawl, # subclasses own implementation
             NUM_CRAWLERS=self.num_crawlers
         )
         # populates mutable crawl queue as it runs
@@ -59,6 +60,15 @@ class ScrapingPipeline:
 
     # run scraper
     async def run_scraper(self, crawl_queue: asyncio.Queue, save_queue: asyncio.Queue):
+        scraper = Scraper(
+            forum_origin=self.forum_origin,
+            manager=self.manager,
+            crawl_queue=crawl_queue,
+            save_queue=save_queue,
+            scrape_func=self.scrape,
+            NUM_SCRAPERS=self.num_scrapers
+        )
+        scraper.run_scraper(verbose=self.verbose)
         ...
 
     # request page
@@ -172,8 +182,9 @@ class Crawler:
 # Scraper
 #   Asynchronously scrape, error catch, deduplicate
 class Scraper:
-    def __init__(self, forum_origin: str, crawl_queue: asyncio.Queue, save_queue: asyncio.Queue, scrape_func, NUM_SCRAPERS: int = NUM_SCRAPERS):
+    def __init__(self, forum_origin: str, manager: Manager, crawl_queue: asyncio.Queue, save_queue: asyncio.Queue, scrape_func, NUM_SCRAPERS: int = NUM_SCRAPERS):
         self.forum_origin = forum_origin
+        self.manager = manager
         self.crawl_queue = crawl_queue
         self.save_queue = save_queue
         self.scrape_func = scrape_func
@@ -190,8 +201,8 @@ class Scraper:
         async with httpx.AsyncClient(timeout=15.0) as self.client:
             async with asyncio.TaskGroup() as tg:
                 # get scraper workers
-                workers = [tg.create_task(self.async_scraper(i)) for i in range(1, NUM_SCRAPERS + 1)]
-                saver = tg.create_task(self.async_saver())
+                workers = [tg.create_task(self.async_scraper(i, verbose=verbose)) for i in range(1, NUM_SCRAPERS + 1)]
+                saver = tg.create_task(self.async_saver(SAVE_BATCH_SIZE=SAVER_BATCH_SIZE, verbose=verbose))
 
                 # await for scraping to be finished
                 await self.crawl_queue.join()
@@ -236,9 +247,43 @@ class Scraper:
                 self.pbar.update(1)
         ...
     
-    # asyncrhonous saver
+    # asyncrononous saver
     async def async_saver(self, SAVE_BATCH_SIZE: int = SAVER_BATCH_SIZE, verbose: bool = False):
         if verbose:
             print('Initializing saver')
 
-        ...
+        save_batch = []
+        while True:
+            # get data
+            item = await self.save_queue.get()
+
+            # check if sentinel value -> None
+            if not item:
+                self.deduplicate_save_batch(batch=save_batch)
+
+
+            # add to save batch
+            save_batch.append(item)
+            self.save_queue.task_done()
+
+            # if batch size met, save all and clear save batch
+            if len(save_batch) >= SAVER_BATCH_SIZE:
+                self.deduplicate_save_batch(batch=save_batch)
+
+        # incase save batch not empty, save leftovers
+        if len(save_batch) != 0:
+            self.deduplicate_save_batch(batch=save_batch)
+
+    def deduplicate_save_batch(self, batch: list[Content]) -> list[Content]:
+        # in memory deduplication
+        deduplicated_batch = list({content.hash_: content for content in batch}.values())
+
+        # save deduplcation merge insert
+        self.manager.deduplicate_insert(
+            tbl_name=CONTENT_TBL_NAME,
+            key="hash_",
+            data=deduplicated_batch
+        )
+
+        batch.clear()
+        gc.collect()
