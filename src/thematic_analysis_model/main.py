@@ -1,7 +1,7 @@
 # main file
 from thematic_analysis_model.model.config import *
 from thematic_analysis_model.model.data_management import Loader, Manager
-from thematic_analysis_model.model.scraping import alzconnectedScrapingPipeline, ScrapingPipeline
+from thematic_analysis_model.model.scraping import alzconnectedScrapingPipeline, dementiasupportforumScrapingPipeline,  ScrapingPipeline
 
 import asyncio
 
@@ -10,19 +10,18 @@ def scrape():
     loader.first_init() # reset on tests
     manager = Manager(loader=loader)
 
-    print(type(loader))
-    pipeline = alzconnectedScrapingPipeline(
+    pipeline = dementiasupportforumScrapingPipeline(
         loader=loader,
         manager=manager,
         num_crawlers=NUM_CRAWLERS,
         num_scrapers=NUM_SCRAPERS,
-        forum_origin='alzconnected',
+        forum_origin='dementiasupportforum',
         verbose=True
     )
     seeds = ScrapingPipeline.seed_generator(
-        prefix="https://alzconnected.org/categories/i-have-alzheimers-or-other-dementia/p",
+        prefix="https://forum.alzheimers.org.uk/forums/i-have-dementia.56/page-",
         start=1,
-        stop=3,
+        stop=10,
         suffix=""
     )
     asyncio.run(pipeline.run_pipeline(seeds))
