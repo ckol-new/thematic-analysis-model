@@ -111,6 +111,10 @@ class ScrapingPipeline:
             if verbose:
                 print(f"Error in requesting page: {url} -> {e}")
 
+    @classmethod
+    def seed_generator(cls, prefix: str, start: int, stop: int, suffix: str) -> list[str]:
+        return [str(prefix + str(i) + suffix) for i in range(start, stop + 1)]
+
 
 # Crawler class
 #   Asynchronously crawls list of seed nodes (forum index pages), generating list of crawl nodes (urls to crawl from)
