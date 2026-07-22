@@ -1,6 +1,6 @@
 from .data_management import Loader, Manager
 from .config import CONTENT_TBL_NAME, NUM_CRAWLERS, NUM_SCRAPERS, SAVER_BATCH_SIZE
-from .dataclasses import Content
+from .dataclasses import Content, Metadata
 
 import asyncio
 from pydantic import ValidationError
@@ -8,6 +8,9 @@ import httpx
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 import gc
+import xxhash
+import datetime
+import uuid
 
 # Web scraping and crawling. Text processing. Validation
 #   Scraping is Asynchronous
@@ -287,3 +290,191 @@ class Scraper:
 
         batch.clear()
         gc.collect()
+
+class Processor:
+    @classmethod
+    def clean_text(text=str) -> str:
+        if not text:
+            return None
+        # two step decoding for double escape
+        try:
+            text = codecs.decode(text, 'unicode-escape') 
+        except:
+            pass
+        for i in range(2):
+            try:
+                text = text.encode('latin-1').decode('utf-8')
+            except (UnicodeEncodeError, UnicodeDecodeError):
+                break
+            
+        return text 
+
+# alzconnected specific scraping pipeline
+class alzconnectedScrapingPipeline(ScrapingPipeline):
+    def __init__(self, loader: Loader, manager: Manager, num_crawlers: int, num_scrapers: int, verbose: bool):
+        super().__init__(self, loader=loader, manager=manager, num_crawlers=num_crawlers, num_scrapers=num_scrapers, verbose=verbose)
+
+     # crawl page
+    @classmethod
+    def crawl(cls, soup: BeautifulSoup) -> list[str]:
+        links = set()
+        for link in soup.find_all('a'):
+            href = link.get('href')
+            if '/discussion/' in href:
+                links.add(href)
+        return list(links)
+
+    @classmethod
+    def scrape(cls, soup: BeautifulSoup, url: str, origin: str) -> list[Content]:
+        # get post
+        post: Content = cls.scrape_post(soup, url, origin)
+        if not post:
+            return None
+
+        parent_uuid: str = post.uuid
+
+        # get comments
+        comments: list[Content] = []
+        comment_div_list = soup.find_all('div', class_='Comment')
+        for comment_div in comment_div_list:
+            comment: Content = cls.scrape_comment(comment_div, url, parent_uuid, origin)
+            comments.append(comment)
+
+        # return list concat
+        return [post] + comments
+    
+    @classmethod
+    def scrape_post(cls, soup: BeautifulSoup, url: str, origin: str) -> Content:
+        # get post div
+        post_div = soup.find('div', class_='Discussion')
+
+        # get content
+        content = cls.scrape_content(post_div)
+
+        # get title
+        title = cls.scrape_title(soup)
+
+        # get date
+        date: str = cls.scrape_date(post_div)
+
+        # get author name
+        username: str = cls.scrape_username(post_div)
+        
+        # misc
+        hash_: str = xxhash.xxh64(url).hexdigest()
+        date_accessed: str = str(datetime.date.today())
+        my_uuid: str = str(uuid.uuid4())
+        uuid_parent = None
+        content_type = 'post'
+        origin: str = origin
+
+        metadata = Metadata(
+            url=url,
+            date=date,
+            date_accessed=date_accessed,
+            forum_origin=origin,
+            username=username,
+            type_=content_type
+        )
+
+        # validate essentials (metadata + content)
+        content: Content = Content(
+            uuid_=my_uuid,
+            parent_uuid_=uuid_parent,
+            hash_=hash_,
+            metadata_=metadata,
+            title=title,
+            text=content,
+            is_processed=False,
+            is_split=False
+        )
+
+        return content
+
+    @classmethod
+    def scrape_comment(cls, soup: BeautifulSoup, url: str, parent_uuid: str, origin: str) -> Content:
+        # get content
+        content = cls.scrape_content(soup)
+
+        # get date
+        date: str = cls.scrape_date(soup)
+
+        # get author name
+        username: str = cls.scrape_username(soup)
+        
+        # misc
+        hash_: str = xxhash.xxh64(url).hexdigest()
+        date_accessed: str = str(datetime.date.today)
+        my_uuid: str = str(uuid.uuid4())
+        uuid_parent = parent_uuid
+        content_type: str = 'comment'
+        origin: str = origin
+
+        metadata = Metadata(
+            url=url,
+            date=date,
+            date_accessed=date_accessed,
+            forum_origin=origin,
+            username=username,
+            type_=content_type
+        )
+
+        # validate essentials (metadata + content)
+        content: Content = Content(
+            uuid_=my_uuid,
+            parent_uuid_=uuid_parent,
+            hash_=hash_,
+            metadata_=metadata,
+            title=None,
+            text=content,
+            is_processed=False,
+            is_split=False
+        )
+
+        return content
+        ...
+    @classmethod
+    def scrape_content(cls, soup: BeautifulSoup) -> str:
+        # get text
+        text: str = soup.get_text(separator='', strip=True)
+
+        # clean text
+        text: str = Processor.clean_text(text)
+
+        # validate text
+        if not text or len(text) <= 5:
+            return None
+
+        # return text
+        return text
+        ...
+    @classmethod
+    def scrape_date(cls, soup: BeautifulSoup) -> str:
+        time_div = soup.find('time')
+        if not time_div: return None
+        date = time_div.get('title')
+        if not date: return None
+        return str(date)
+        
+    @classmethod
+    def scrape_username(cls, soup):
+        username_div = soup.find('a', class_='Username js-userCard')
+        if not username_div:
+            return None
+        username = username_div.text
+        if not username: return None
+        return str(username)
+
+    @classmethod
+    def scrape_title(cls, soup: BeautifulSoup):
+        title = soup.find('title')
+        if not title:
+            return None
+
+        return title.get_text()
+
+
+# dementia support forum scraping pipeline
+class dementiasupportforumScrapingPipeline(ScrapingPipeline):
+    def __init__(self, loader: Loader, manager: Manager, num_crawlers: int, num_scrapers: int, verbose: bool):
+        super().__init__(self, loader=loader, manager=manager, num_crawlers=num_crawlers, num_scrapers=num_scrapers, verbose=verbose)
