@@ -52,6 +52,7 @@ class TrialConfig(BaseModel):
     umap_n_components: int = 2
     umap_metric: str = 'euclidean'
     umap_min_dist: float = 0.1
+    umap_random_state: int = 42
     hdbscan_min_cluster_size: int = 5
     hdbscan_min_samples: int | None = None
     hdbscan_metric: str = 'euclidean'

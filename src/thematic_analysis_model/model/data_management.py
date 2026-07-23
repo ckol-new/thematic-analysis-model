@@ -58,7 +58,7 @@ class Loader:
     def load_bertopic_model(self, trial_config: TrialConfig | None = None) -> BERTopic:
         if not trial_config:
             embedding_model = self.load_embedding_model()
-            umap_model = UMAP()
+            umap_model = UMAP(random_state=42)
             hdbscan_model = HDBSCAN()
             vectorizer_model = CountVectorizer(stop_words='english')
             ctfidf_model = ClassTfidfTransformer()
@@ -76,7 +76,8 @@ class Loader:
                 n_neighbors=trial_config.umap_n_neighbours,
                 n_components=trial_config.umap_n_components,
                 metric=trial_config.umap_metric,
-                min_dist=trial_config.umap_min_dist
+                min_dist=trial_config.umap_min_dist,
+                random_state=trial_config.umap_random_state
             )
             hdbscan_model = HDBSCAN(
                 min_cluster_size=trial_config.hdbscan_min_cluster_size,

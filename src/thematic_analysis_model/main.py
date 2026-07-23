@@ -50,10 +50,8 @@ def scrape():
     tc = TrialConfig(
         trial_name='name',
         trial_num=1,
-        trial_group='testing',
         id_='asf',
-        nr_topics=5,
-        umap_n_components=20
+        umap_n_components=10
     )
     modeller = Modeller(
         loader=loader,
@@ -68,9 +66,13 @@ def scrape():
 def main():
     loader = Loader() # loader is composed into classes that need table access directly. 
     manager = Manager(loader=loader) # manager gives classes access to the table, to update or retrieve data.
+    examples = manager.retrieve_column_list(tbl_name='sentence', limit=3, columns=['reduced_embedding'])
+    print(examples)
+
 
 
 
 
 if __name__ == "__main__":
     scrape()
+    main()
