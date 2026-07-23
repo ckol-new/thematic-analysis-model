@@ -423,7 +423,7 @@ class Processor:
 
     # replace username with placeholder
     #   AI generated
-    def replace_username(self, text: str, word_pattern, usernames: set, placeholder: str = '[USER]') -> str:
+    def replace_username(self, text: str, word_pattern, usernames: set, placeholder: str = '@USER') -> str:
         return word_pattern.sub(
             lambda m: placeholder if m.group(0).lower() in usernames else m.group(0),
             text

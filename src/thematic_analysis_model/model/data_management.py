@@ -1,9 +1,10 @@
 # managing data: Loading data, cleaning database
 #   while other classes can interact with the data, update the data, and read from data, this is more for general data management.
-from .config import DATABASE_PATH, CONTENT_TBL_NAME, SENTENCE_TBL_NAME, MODEL_OUTPUT_TBL_NAME, FILE_IO_BATCH_SIZE
+from .config import DATABASE_PATH, CONTENT_TBL_NAME, SENTENCE_TBL_NAME, MODEL_OUTPUT_TBL_NAME, FILE_IO_BATCH_SIZE, EMBEDDING_MODEL_NAME
 from .dataclasses import Content, Sentence, ModelOutput
 
 import lancedb
+from sentence_transformers import SentenceTransformer
 import pandas as pd
 import random
 from pathlib import Path
@@ -40,6 +41,9 @@ class Loader:
     def connect(self, name: str):
         return self.db.open_table(name=name)
 
+    # load embedding model
+    def load_embedding_model(self, model_name: str = EMBEDDING_MODEL_NAME):
+        return SentenceTransformer(model_name)
 
 # Manager class:
 #   Manages data, updates boolean flags, clears history to save space.
@@ -63,6 +67,16 @@ class Manager:
             raise Exception(f'Error; no table of name {tbl_name} in lance')
 
         return tbl
+
+    # returns number of rows that matches its condition
+    #   if condition is none, returns length of db
+    def get_num_match_condition(self, tbl_name: str, condition: str | None = None):
+        tbl = self.check_tbl_name(tbl_name=tbl_name)
+        if not condition:
+            return tbl.count_rows()
+        else:
+            return tbl.count_rows(filter=condition)
+
 
     # retrieve rowids by condition and/or limit
     #   optional shuffling

@@ -35,7 +35,7 @@ class Embedder:
             # paginate to embed in batches
             for i in range(0, len(uuids), EMBED_BATCH_SIZE):
                 current_docs = sentences[i:i+EMBED_BATCH_SIZE]
-                current_uuids = sentences[i:i+EMBED_BATCH_SIZE]
+                current_uuids = uuids[i:i+EMBED_BATCH_SIZE]
 
                 # embed
                 embeddings = self.embed_batch(docs=current_docs)
@@ -46,7 +46,7 @@ class Embedder:
                         'uuid_': uuid,
                         'embedding': list(embedding),
                         'is_embedded': True
-                    } for uuid, embedding in zip(current_uuids, list(embeddings))
+                    } for uuid, embedding in zip(current_uuids, list(embeddings), strict=True)
                 ]
 
                 self.manager.matched_update(

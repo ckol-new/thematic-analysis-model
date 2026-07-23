@@ -2,6 +2,7 @@
 from thematic_analysis_model.model.config import *
 from thematic_analysis_model.model.data_management import Loader, Manager
 from thematic_analysis_model.model.scraping import alzconnectedScrapingPipeline, dementiasupportforumScrapingPipeline,  ScrapingPipeline, Processor
+from thematic_analysis_model.model.embedding import Embedder
 
 import pprint
 import asyncio
@@ -33,15 +34,22 @@ def scrape():
         manager=manager
     )
     processor.run_processor()
-    print(loader.connect(name='sentence').count_rows())
+    print(loader.connect(name='sentence').count_rows(filter='is_processed = true'))
+    print(loader.connect(name='sentence').count_rows(filter='is_embedded = true'))
+
+    # embedding
+    embedder = Embedder(
+        loader=loader,
+        manager=manager
+    )
+    embedder.run_embedder()
+    print(loader.connect(name='sentence').count_rows(filter='is_embedded = true'))
 
 
 def main():
     loader = Loader() # loader is composed into classes that need table access directly. 
     manager = Manager(loader=loader) # manager gives classes access to the table, to update or retrieve data.
 
-    sentences = manager.retrieve_column_list('sentence', columns=['sentence'])
-    pprint.pprint(sentences)
 
 
 
