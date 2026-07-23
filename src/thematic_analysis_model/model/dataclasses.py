@@ -46,7 +46,7 @@ class TrialConfig(BaseModel):
     trial_name: str
     id_: str
     trial_num: int
-    trial_group: str | None
+    trial_group: str | None = None
     embedding_model: str = EMBEDDING_MODEL_NAME
     umap_n_neighbours: int = 15
     umap_n_components: int = 2
@@ -56,7 +56,7 @@ class TrialConfig(BaseModel):
     hdbscan_min_samples: int | None = None
     hdbscan_metric: str = 'euclidean'
     hdbscan_cluster_selection_method: str = 'eom'
-    stopwords_path: str | None # where stopwords will be
+    stopwords_path: str | None = None # where stopwords will be
     nr_topics: int | None = None
     top_n_words: int = 10 # really no point increasing beyond 15 or 20
 

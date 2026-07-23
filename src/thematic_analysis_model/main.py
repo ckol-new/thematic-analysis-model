@@ -1,5 +1,6 @@
 # main file
 from thematic_analysis_model.model.config import *
+from thematic_analysis_model.model.dataclasses import TrialConfig
 from thematic_analysis_model.model.data_management import Loader, Manager
 from thematic_analysis_model.model.scraping import alzconnectedScrapingPipeline, dementiasupportforumScrapingPipeline,  ScrapingPipeline, Processor
 from thematic_analysis_model.model.embedding import Embedder
@@ -46,10 +47,18 @@ def scrape():
     embedder.run_embedder()
     print(loader.connect(name='sentence').count_rows(filter='is_embedded = true'))
 
+    tc = TrialConfig(
+        trial_name='name',
+        trial_num=1,
+        trial_group='testing',
+        id_='asf',
+        nr_topics=5,
+        umap_n_components=20
+    )
     modeller = Modeller(
         loader=loader,
         manager=manager,
-        trial_config=None
+        trial_config=tc
     )
     merged_model = modeller.run_modeller(save_reduced_embeddings=True)
     fig = merged_model.visualize_topics()
