@@ -1,7 +1,7 @@
 # dataclasses and adapters.
 from lancedb.pydantic import LanceModel, Vector
 from pydantic import BaseModel, TypeAdapter
-from .config import EMBEDDING_DIMENSIONS
+from .config import EMBEDDING_DIMENSIONS, EMBEDDING_MODEL_NAME
 
 
 
@@ -41,7 +41,23 @@ class Sentence(LanceModel):
 
 
 class TrialConfig(BaseModel):
-    ...
+    trial_name: str
+    id_: str
+    trial_num: int
+    trial_group: str | None
+    embedding_model: str = EMBEDDING_MODEL_NAME
+    umap_n_neighbours: int = 15
+    umap_n_components: int = 2
+    umap_metric: str = 'euclidean'
+    umap_min_dist: float = 0.1
+    hdbscan_min_cluster_size: int = 5
+    hdbscan_min_samples: int | None = None
+    hdbscan_metric: str = 'euclidean'
+    hdbscan_cluster_selection_method: str = 'eom'
+    stopwords_path: str | Path | None # where stopwords will be
+    nr_topics: int | None = None
+    top_n_words: int = 10 # really no point increasing beyond 15 or 20
+
 
 class ValidationMetric(BaseModel):
     ...
