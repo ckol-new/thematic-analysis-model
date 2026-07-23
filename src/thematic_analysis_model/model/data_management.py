@@ -112,6 +112,24 @@ class Manager:
                 batch_df = tbl.take_row_ids(batch_ids).select(columns).to_pandas()
             yield batch_df
 
+    # retrieve column as list
+    def retrieve_column_list(self, tbl_name: str, condition: str | None = None, limit: int | None = None, shuffle: bool = False, columns: list[str] | None = None) -> list[any]:
+        tbl = self.check_tbl_name(tbl_name=tbl_name)
+        if not columns:
+            raise Exception("Must input valid column to retrieve column as list")
+        if len(columns) != 0:
+            raise Exception("Must input only one column to retrieve as list")
+
+        if not limit:
+            limit = tbl.count_rows() + 1 # greater than size of db
+
+        if not condition:
+            arr = tbl.search().limit(limit).select(columns).to_arrow()[columns[0]].to_pylist()
+        else:
+            arr = tbl.search().where(condition).limit(limit).select(columns).to_arrow()[columns[0]].to_pylist()
+
+        return arr
+
     # when not matching on column, insert data.
     #   for deduplication mostly
     def deduplicate_insert(self, tbl_name: str, key: str, data: list[dict]):
