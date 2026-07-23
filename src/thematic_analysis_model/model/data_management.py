@@ -1,13 +1,21 @@
-# managing data: Loading data, cleaning database
-#   while other classes can interact with the data, update the data, and read from data, this is more for general data management.
 from .config import DATABASE_PATH, CONTENT_TBL_NAME, SENTENCE_TBL_NAME, MODEL_OUTPUT_TBL_NAME, FILE_IO_BATCH_SIZE, EMBEDDING_MODEL_NAME
-from .dataclasses import Content, Sentence, ModelOutput
+from .dataclasses import Content, Sentence, ModelOutput, TrialConfig
 
 import lancedb
-from sentence_transformers import SentenceTransformer
 import pandas as pd
 import random
 from pathlib import Path
+
+from sentence_transformers import SentenceTransformer
+from bertopic import BERTopic
+from umap import UMAP
+from hdbscan import HDBSCAN
+from bertopic.vectorizers import ClassTfidfTransformer
+from sklearn.feature_extraction.text import CountVectorizer
+
+
+# managing data: Loading data, cleaning database
+#   while other classes can interact with the data, update the data, and read from data, this is more for general data management.
 
 
 # Loader class:
@@ -44,6 +52,54 @@ class Loader:
     # load embedding model
     def load_embedding_model(self, model_name: str = EMBEDDING_MODEL_NAME):
         return SentenceTransformer(model_name)
+
+    # load bertopic model
+    #   Load from trial config, or defualt paramters
+    def load_bertopic_model(self, trial_config: TrialConfig | None = None) -> BERTopic:
+        if not trial_config:
+            embedding_model = self.load_embedding_model()
+            umap_model = UMAP()
+            hdbscan_model = HDBSCAN()
+            vectorizer_model = CountVectorizer(stop_words='english')
+            ctfidf_model = ClassTfidfTransformer()
+            bertopic_model = BERTopic(
+                embedding_model=embedding_model,
+                umap_model=umap_model,
+                hdbscan_model=hdbscan_model,
+                vectorizer_model=vectorizer_model,
+                ctfidf_model=ctfidf_model,
+                calculate_probabilities=False, # change later
+            )
+        else: # this needs to be updated as I change what parameters I am tuning
+            embedding_model = self.load_embedding_model(model_name=trial_config.embedding_model)
+            umap_model = UMAP(
+                n_neighbors=trial_config.umap_n_neighbours,
+                n_components=trial_config.umap_n_components,
+                metric=trial_config.umap_metric,
+                min_dist=trial_config.umap_min_dist
+            )
+            hdbscan_model = HDBSCAN(
+                min_cluster_size=trial_config.hdbscan_min_cluster_size,
+                min_samples=trial_config.hdbscan_min_samples,
+                metric=trial_config.hdbscan_metric,
+                cluster_selection_method=trial_config.hdbscan_cluster_selection_method
+            )
+            vectorizer_model = CountVectorizer(stop_words='english') # need to do this later
+            ctfidf_model = ClassTfidfTransformer()
+            bertopic_model = BERTopic(
+                embedding_model=embedding_model,
+                umap_model=umap_model,
+                hdbscan_model=hdbscan_model,
+                vectorizer_model=vectorizer_model,
+                ctfidf_model=ctfidf_model,
+                calculate_probabilities=False, # change later
+                nr_topics=trial_config.nr_topics,
+                top_n_words=trial_config.top_n_words
+            )
+        return bertopic_model
+
+
+
 
 # Manager class:
 #   Manages data, updates boolean flags, clears history to save space.
