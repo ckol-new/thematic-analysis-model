@@ -21,7 +21,6 @@ class Content(LanceModel):
     title: str | None = None
     text: str 
     # bool flags
-    is_processed: bool = False
     is_split: bool = False
 
 class Sentence(LanceModel):
@@ -32,10 +31,14 @@ class Sentence(LanceModel):
     sentence: str
     embedding: Vector(dim=EMBEDDING_DIMENSIONS) | None = None
     reduced_embedding: list[float] | None = None # I want to be able to change this later, so it has to be dynamic array
+    topic: int | None = None
+    probabilities: list[float] | None = None
     # bool flags
-    is_embedded: bool = False
-    is_modelled: bool = False
-    is_validated: bool = False
+    is_processed: bool = False # has been processed for embedding
+    is_embedded: bool = False # has been embedded
+    is_modelled: bool = False # has been modelled
+    is_validated: bool = False # has been validated
+
 
 class TrialConfig(BaseModel):
     ...

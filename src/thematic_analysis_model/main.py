@@ -1,8 +1,9 @@
 # main file
 from thematic_analysis_model.model.config import *
 from thematic_analysis_model.model.data_management import Loader, Manager
-from thematic_analysis_model.model.scraping import alzconnectedScrapingPipeline, dementiasupportforumScrapingPipeline,  ScrapingPipeline
+from thematic_analysis_model.model.scraping import alzconnectedScrapingPipeline, dementiasupportforumScrapingPipeline,  ScrapingPipeline, Processor
 
+import pprint
 import asyncio
 
 def scrape():
@@ -28,13 +29,21 @@ def scrape():
 
     print(loader.connect(name='content').count_rows())
 
+    processor = Processor(
+        manager=manager
+    )
+    processor.run_processor()
+    print(loader.connect(name='sentence').count_rows())
+
 
 def main():
     loader = Loader() # loader is composed into classes that need table access directly. 
+    manager = Manager(loader=loader) # manager gives classes access to the table, to update or retrieve data.
 
-    # test 
+    sentences = manager.retrieve_column_list('sentence', columns=['sentence'])
+    pprint.pprint(sentences)
 
 
 
 if __name__ == "__main__":
-    scrape()
+    main()

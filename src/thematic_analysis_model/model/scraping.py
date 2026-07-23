@@ -1,8 +1,9 @@
 from .data_management import Loader, Manager
-from .config import CONTENT_TBL_NAME, NUM_CRAWLERS, NUM_SCRAPERS, SAVER_BATCH_SIZE
-from .dataclasses import Content, Metadata
+from .config import CONTENT_TBL_NAME, SENTENCE_TBL_NAME, NUM_CRAWLERS, NUM_SCRAPERS, SAVER_BATCH_SIZE, FILE_IO_BATCH_SIZE, MIN_SENTENCE_LENGTH, MAX_SENTENCE_LENGTH
+from .dataclasses import Content, Metadata, Sentence
 
 import asyncio
+import re
 from pydantic import ValidationError
 import httpx
 from bs4 import BeautifulSoup
@@ -320,8 +321,123 @@ class Scraper:
 
         batch.clear()
         gc.collect()
+
 # class for processing and validating text
 class Processor:
+    def __init__(self, manager: Manager):
+        self.manager = manager
+
+    # split content into sentences
+    #   update all relevant flags
+    #   deduplicate and validate: remove usernames
+    #   post process
+    def run_processor(self, BATCH_SIZE: int = FILE_IO_BATCH_SIZE):
+        # get usernames set
+        metadata_dicts: list[str] = self.manager.retrieve_column_list(tbl_name=CONTENT_TBL_NAME, columns=['metadata_'])
+        usernames: list[str] = [i['username'].lower() for i in metadata_dicts] # all in lowercase
+        set().update(usernames) #usernames as set
+        del metadata_dicts
+        gc.collect()
+
+        # load in batches: rows not already split
+        #   split into sentences
+        #   validate sentences
+        current_save_batch = []
+        for batch in self.manager.batch_generator(
+            tbl_name=CONTENT_TBL_NAME,
+            condition='is_split = false',
+            columns=['text', 'uuid_', 'metadata_']
+        ):
+            batch_text = batch['text'].tolist()
+            batch_uuids = batch['uuid_'].tolist()
+            batch_metadata = batch['metadata_'].tolist()  # list of dicts
+
+            for text, uid, metadata in zip(batch_text, batch_uuids, batch_metadata, strict=True):
+                # split text
+                sentences: list[str] = self.split_text(text)
+
+                # validate sentences
+                cleaned_sentences = self.process_sentences(sentences=sentences, usernames=usernames)
+
+                # create sentence objects
+                for clean_sentence in cleaned_sentences:
+                    hash_ = xxhash.xxh64_hexdigest(clean_sentence)
+                    uuid_ = str(uuid.uuid4())
+
+                    sentence = Sentence(
+                        uuid_=uuid_,
+                        hash_=hash_,
+                        content_uuid_=uid,
+                        metadata_=metadata,
+                        sentence=clean_sentence,
+                        embedding=None,
+                        reduced_embedding=None,
+                        topic=None,
+                        probabilities=None,
+                        is_processed=True,
+                    )
+                    current_save_batch.append(sentence)
+
+            # if batch size met, save
+            if len(current_save_batch) >= FILE_IO_BATCH_SIZE:
+                self.save_processed_content(
+                    save_batch=current_save_batch
+                )
+                current_save_batch.clear()
+                gc.collect()
+        
+        if len(current_save_batch) != 0:
+            self.save_processed_content(
+                save_batch=current_save_batch
+            )
+            current_save_batch.clear()
+            gc.collect()
+
+    # split text into sentences
+    def split_text(self, text: str) -> list[str]:
+        return [sentence.strip() for sentence in text.split(". ")]
+
+    # process sentences
+    #   remove if too short, too long, contains links, other data artifacts
+    #   replace usernames with [USER]
+    def process_sentences(self, sentences: list[str], usernames: set) -> list[str]:
+        cleaned_sentences: list[str] = []
+        at_removal_pattern = re.compile(r'@') # removing @'s
+        word_pattern = re.compile(r'\b[\w\.-]+\b') # for removing usernames
+
+        for sentence in sentences:
+            if len(sentence) <= MIN_SENTENCE_LENGTH:
+                continue
+            elif len(sentence) >= MAX_SENTENCE_LENGTH:
+                continue
+            elif any(keyword in sentence for keyword in ['https', 'MemberPost']):
+                continue
+            elif "@" in sentence:
+                sentence = at_removal_pattern.sub(' ', sentence)
+
+            # replace username
+            sentence = self.replace_username(text=sentence, word_pattern=word_pattern, usernames=usernames)
+            cleaned_sentences.append(sentence)
+
+        return cleaned_sentences
+
+    # replace username with placeholder
+    #   AI generated
+    def replace_username(self, text: str, word_pattern, usernames: set, placeholder: str = '[USER]') -> str:
+        return word_pattern.sub(
+            lambda m: placeholder if m.group(0).lower() in usernames else m.group(0),
+            text
+        )
+
+    # save processed content
+    #   deduplication occurs by hash_
+    def save_processed_content(self, save_batch: list[Sentence]):
+        self.manager.deduplicate_insert(
+            tbl_name=SENTENCE_TBL_NAME,
+            key='hash_',
+            data=save_batch
+        )
+        
     @classmethod
     def clean_text(cls, text=str) -> str:
         if not text:
@@ -502,7 +618,6 @@ class alzconnectedScrapingPipeline(ScrapingPipeline):
             return None
 
         return title.get_text()
-
 
 # dementia support forum scraping pipeline
 class dementiasupportforumScrapingPipeline(ScrapingPipeline):

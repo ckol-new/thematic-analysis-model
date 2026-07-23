@@ -75,9 +75,9 @@ class Manager:
 
         # check condition
         if not condition:
-            ids = tbl.search()._with_row_id(True).select(['_rowid']).limit(query_limit).to_arrow()['_rowid'].to_pylist()
+            ids = tbl.search().with_row_id(True).select(['_rowid']).limit(query_limit).to_arrow()['_rowid'].to_pylist()
         else:
-            ids = tbl.search().where(condition)._with_row_id(True).select(['_rowid']).to_arrow()['_rowid'].to_pylist()
+            ids = tbl.search().where(condition).with_row_id(True).select(['_rowid']).to_arrow()['_rowid'].to_pylist()
 
         # check if shuffle
         if shuffle:
@@ -117,7 +117,7 @@ class Manager:
         tbl = self.check_tbl_name(tbl_name=tbl_name)
         if not columns:
             raise Exception("Must input valid column to retrieve column as list")
-        if len(columns) != 0:
+        if len(columns) != 1:
             raise Exception("Must input only one column to retrieve as list")
 
         if not limit:
