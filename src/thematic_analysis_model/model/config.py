@@ -23,4 +23,6 @@ MAX_SENTENCE_LENGTH = 200
 # Batch Sizes
 FILE_IO_BATCH_SIZE = 100000
 EMBED_BATCH_SIZE = 4096
+MODEL_BATCH_SIZE = 100000 # num of sentences to model at once
+MERGE_BATCH_SIZE = 20 # number of submodels before you merge them
 
