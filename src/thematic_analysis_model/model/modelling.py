@@ -51,7 +51,7 @@ class Modeller:
             empty_model = deepcopy(baseline_model)
 
             # model batch, save data + update bools
-            sub_model: BERTopic = empty_model.fit(documents=docs, embeddings=embeddings) 
+            sub_model: BERTopic = empty_model.fit(documents=docs, embeddings=np.array(embeddings)) 
             self.save_model_data(model=sub_model, uuids=uuids, save_reduced_embeddings=save_reduced_embeddings)
             submodels.append(sub_model)
 

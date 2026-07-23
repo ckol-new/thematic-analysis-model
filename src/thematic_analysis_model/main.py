@@ -3,6 +3,7 @@ from thematic_analysis_model.model.config import *
 from thematic_analysis_model.model.data_management import Loader, Manager
 from thematic_analysis_model.model.scraping import alzconnectedScrapingPipeline, dementiasupportforumScrapingPipeline,  ScrapingPipeline, Processor
 from thematic_analysis_model.model.embedding import Embedder
+from thematic_analysis_model.model.modelling import Modeller
 
 import pprint
 import asyncio
@@ -45,6 +46,15 @@ def scrape():
     embedder.run_embedder()
     print(loader.connect(name='sentence').count_rows(filter='is_embedded = true'))
 
+    modeller = Modeller(
+        loader=loader,
+        manager=manager,
+        trial_config=None
+    )
+    merged_model = modeller.run_modeller(save_reduced_embeddings=True)
+    fig = merged_model.visualize_topics()
+    fig.show()
+
 
 def main():
     loader = Loader() # loader is composed into classes that need table access directly. 
@@ -54,4 +64,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    scrape()

@@ -3,6 +3,8 @@ from lancedb.pydantic import LanceModel, Vector
 from pydantic import BaseModel, TypeAdapter
 from .config import EMBEDDING_DIMENSIONS, EMBEDDING_MODEL_NAME
 
+from pathlib import Path
+
 
 
 class Metadata(BaseModel): # metaedata of content, not of individual sentence, mostly for locating post in internet
@@ -54,7 +56,7 @@ class TrialConfig(BaseModel):
     hdbscan_min_samples: int | None = None
     hdbscan_metric: str = 'euclidean'
     hdbscan_cluster_selection_method: str = 'eom'
-    stopwords_path: str | Path | None # where stopwords will be
+    stopwords_path: str | None # where stopwords will be
     nr_topics: int | None = None
     top_n_words: int = 10 # really no point increasing beyond 15 or 20
 
