@@ -17,6 +17,7 @@ dependencies = [
     "plotly>=6.8.0",
     "sentence-transformers>=5.5.1",
     "streamlit>=1.60.0",
+    "tensorflow>=2.21.0",
     "umap-learn>=0.5.12",
     "xxhash>=3.8.1",
 ]

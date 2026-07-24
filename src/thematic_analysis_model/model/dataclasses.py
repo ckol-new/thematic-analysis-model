@@ -64,6 +64,7 @@ class TrialConfig(BaseModel):
 
 
 class ValidationMetric(BaseModel):
+    num_topics: int
     npmi_score: float
     total_pairwise_distance: float
     topics_pairwise_distance: list[float] # index is topic num

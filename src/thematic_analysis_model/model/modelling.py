@@ -35,7 +35,6 @@ class Modeller:
             )
         submodels: list[BERTopic] = []
         baseline_model = self.loader.load_bertopic_model(trial_config=self.trial_config)
-
         for batch in self.manager.batch_generator(
             tbl_name=SENTENCE_TBL_NAME,
             condition='is_modelled = false',
@@ -60,8 +59,7 @@ class Modeller:
                 merged_model = selected_merge_mode(submodels=submodels)
                 submodels.clear()
                 gc.collect()
-
-                submodels.append(self.merge_model)
+                submodels.append(merged_model)
 
             # update pbar
             pbar.update(len(uuids))
@@ -69,13 +67,15 @@ class Modeller:
         pbar.close()
 
         # merge leftover models
-        if len(submodels) != 1:
+        if len(submodels) == 0:
+            raise Exception('Failed to train model, or add model to submodels')
+        elif len(submodels) == 1:
+            return submodels[0]
+        else:
             merged_model = selected_merge_mode(submodels=submodels)
             submodels.clear()
             gc.collect()
             return merged_model
-        else:
-            return submodels[0]
 
     # merge model data: using default .merge_models()
     def merge_model(self, submodels: list[BERTopic]) -> BERTopic:

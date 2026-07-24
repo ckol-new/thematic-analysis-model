@@ -125,6 +125,26 @@ class ScrapingPipeline:
     def scrape(cls, soup, url, origin):
         ...
 
+class ScrapeQueue:
+    def __init__(self, loader: Loader, manager: Manager, scrape_configs, num_crawlers: int = NUM_CRAWLERS, num_scrapers: int = NUM_SCRAPERS, verbose: bool = False):
+        count = 0
+        total = len(scrape_configs)
+        for config in scrape_configs:
+            count +=1
+            print(f"***** SCRAPING {count} / {total} *****")
+            pipeline = config.type_scraping_pipeline(
+                loader=loader,
+                manager=manager,
+                num_crawlers=num_crawlers,
+                num_scrapers=num_scrapers,
+                forum_origin=config.forum_origin,
+                verbose=verbose
+            )
+            print(type(pipeline))
+            asyncio.run(pipeline.run_pipeline(seeds=config.seeds))
+
+
+
 
 
 # Crawler class
@@ -375,6 +395,9 @@ class Processor:
                         topic=None,
                         probabilities=None,
                         is_processed=True,
+                        is_embedded=False,
+                        is_modelled=False,
+                        is_validated=False
                     )
                     current_save_batch.append(sentence)
 

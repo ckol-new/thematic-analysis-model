@@ -26,6 +26,8 @@ db/
 # other
 .models/
 models/
+.test_model/
+test_model/
 .validation_metrics/
 validation_metrics/
 

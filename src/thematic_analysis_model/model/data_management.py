@@ -93,7 +93,8 @@ class Loader:
                 min_cluster_size=trial_config.hdbscan_min_cluster_size,
                 min_samples=trial_config.hdbscan_min_samples,
                 metric=trial_config.hdbscan_metric,
-                cluster_selection_method=trial_config.hdbscan_cluster_selection_method
+                cluster_selection_method=trial_config.hdbscan_cluster_selection_method,
+                prediction_data=False
             )
             vectorizer_model = CountVectorizer(stop_words='english') # need to do this later
             ctfidf_model = ClassTfidfTransformer()

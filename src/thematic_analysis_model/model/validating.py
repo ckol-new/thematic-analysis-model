@@ -4,6 +4,7 @@ from .config import SENTENCE_TBL_NAME, VALIDATING_BATCH_SIZE, FILE_IO_BATCH_SIZE
 from thematic_analysis_model.view.visualizing import Visualizer
 
 from bertopic import BERTopic
+from tqdm import tqdm
 import hdbscan
 from sklearn.metrics.pairwise import cosine_similarity
 import gc
@@ -14,10 +15,9 @@ class Validator:
     def __init__(self, model: BERTopic, loader: Loader, manager: Manager, visualizer: Visualizer, trial_config: TrialConfig | None = None):
         self.model = model
         self.model.calculate_probabilities = True
-        self.visualzer = visualizer
+        self.visualizer = visualizer
         self.loader = loader
         self.manager = manager
-        self.visualizer = Visualizer
         self.trial_config = trial_config
 
     # main entry
@@ -33,16 +33,19 @@ class Validator:
         topic_map, doc_map, heatmap, hierarchy_map = self.get_visualizations()
 
         # save model output
-        model_output = ModelOutput(
-            name=self.trial_config.trial_name,
-            batch_name=self.trial_config.batch_name,
-            trial_config=self.trial_config,
-            validation_metrics=validation_metric,
-            topic_map=topic_map.to_json(),
-            document_map=doc_map.to_json(),
-            heatmap=heatmap.to_json(),
-            hierarchy_map=hierarchy_map.to_json()
-        )
+        if not self.trial_config: 
+            return validation_metric, topic_map, doc_map, heatmap, hierarchy_map
+        else:
+            model_output = ModelOutput(
+                name=self.trial_config.trial_name,
+                batch_name=self.trial_config.batch_name,
+                trial_config=self.trial_config,
+                validation_metrics=validation_metric,
+                topic_map=topic_map.to_json(),
+                document_map=doc_map.to_json(),
+                heatmap=heatmap.to_json(),
+                hierarchy_map=hierarchy_map.to_json()
+            )
         self.manager.add_model_output(model_output=model_output)
         return model_output
 
@@ -51,6 +54,11 @@ class Validator:
     #   serialize data to lance
     #   use transform
     def reassign_document_position(self):
+        pbar = tqdm(
+            total=self.manager.get_num_match_condition(tbl_name=SENTENCE_TBL_NAME, condition='is_validated = false'),
+            desc='RECOVERING DOCUMENT POSITION',
+            unit='sentence'
+        )
         # get batch of document
         #   transform
         #   serialize data output (reduced embeddings, topic, probability data)
@@ -65,14 +73,8 @@ class Validator:
             uuids = batch['uuid_'].tolist()
             embeddings = batch['embedding'].tolist()
 
-            # get reduced embeddings
-            reduced_embeddings = self.model.umap_model.transform(documents=docs, embeddings=embeddings)
-
-            # fit top hdbscan tree
-            topics, probs = hdbscan.approximate_predict(
-                self.model.hdbscan_model,
-                np.array(reduced_embeddings)
-            )
+            topics, probs = self.model.transform(documents=docs, embeddings=np.array(embeddings))
+            reduced_embeddings = self.model.umap_model.transform(embeddings)
 
             # serialize data
             data = [
@@ -80,7 +82,7 @@ class Validator:
                     'uuid_': uuid,
                     'is_validated': True,
                     'reduced_embedding': red_embedding,
-                    'topic': topics,
+                    'topic': topic,
                     'probabilities': prob,
                 } for uuid, red_embedding, topic, prob in zip(uuids, reduced_embeddings, topics, probs, strict=True)
             ]
@@ -89,6 +91,8 @@ class Validator:
                 key='uuid_',
                 data=data
             )               
+            pbar.update(len(data))
+        pbar.close()
 
     # get validation metrics
     #   including NPMI score, pairwise topic coherence, intertopic cosine similarity, topic diversity, probability values, redundant pairs, stability metrics
@@ -113,7 +117,8 @@ class Validator:
         noise_ratio, probability_data_by_topic = self.get_probability_data()
 
         validation_metrics = ValidationMetric(
-            npmi_score=1.0, # ignore for know
+            num_topics=len(topics_pairwise_distance),
+            npmi_score=1.0, # ignore for now
             total_pairwise_distance=total_pairwise_distance,
             topics_pairwise_distance=topics_pairwise_distance,
             topic_diversity=topic_diversity,
@@ -127,7 +132,7 @@ class Validator:
     # gets visualizations using functions from Visualizer
     def get_visualizations(self):
         # get topic map
-        topic_map= self.visualizer.visualize_topic_map(model=self.model)
+        topic_map = self.visualizer.visualize_topic_map(model=self.model)
 
         # get document map
         doc_map = self.visualizer.visualize_document_map(model=self.model, manager=self.manager)
@@ -151,7 +156,7 @@ class Validator:
 
         all_topic_scores = [] # pair-wise embedding avg for each topic
         for topic_words in topics: 
-            topic_embeddings = self.model.embedding_model.encode(topic_words, device='mps')
+            topic_embeddings = self.model.embedding_model.embedding_model.encode(topic_words, device='mps')
             similarity_matrix = cosine_similarity(topic_embeddings)
             upper_triangle_indices = np.triu_indices_from(similarity_matrix, k=1)
             pairwise_scores = similarity_matrix[upper_triangle_indices]

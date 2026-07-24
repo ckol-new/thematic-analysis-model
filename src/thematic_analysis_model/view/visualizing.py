@@ -2,6 +2,7 @@ from thematic_analysis_model.model.data_management import Manager
 from thematic_analysis_model.model.config import SENTENCE_TBL_NAME
 
 from bertopic import BERTopic
+import numpy as np
 import plotly as pl
 from plotly.graph_objs import Figure
 
@@ -26,9 +27,9 @@ class Visualizer:
         reduced_embeddings = manager.retrieve_column_list(tbl_name=SENTENCE_TBL_NAME, condition='is_validated = true', columns=['reduced_embedding'])
 
         fig = model.visualize_documents(
-            docs=docs,
-            embeddings=embeddings,
-            reduced_embeddings=reduced_embeddings,
+            docs=np.array(docs),
+            embeddings=np.vstack(embeddings).astype(np.float32),
+            reduced_embeddings=np.vstack(reduced_embeddings).astype(np.float32),
             hide_annotations=True,
             hide_document_hover=True
         )
