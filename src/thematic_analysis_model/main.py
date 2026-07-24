@@ -51,7 +51,7 @@ def scrape():
         trial_name='name',
         trial_num=1,
         id_='asf',
-        umap_n_components=10
+        umap_n_components=5
     )
     modeller = Modeller(
         loader=loader,

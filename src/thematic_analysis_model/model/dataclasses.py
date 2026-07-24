@@ -46,8 +46,9 @@ class TrialConfig(BaseModel):
     trial_name: str
     id_: str
     trial_num: int
-    trial_group: str | None = None
+    batch_name: str | None = None
     embedding_model: str = EMBEDDING_MODEL_NAME
+    umap_parametric: bool = False
     umap_n_neighbours: int = 15
     umap_n_components: int = 2
     umap_metric: str = 'euclidean'
@@ -63,7 +64,14 @@ class TrialConfig(BaseModel):
 
 
 class ValidationMetric(BaseModel):
-    ...
+    npmi_score: float
+    total_pairwise_distance: float
+    topics_pairwise_distance: list[float] # index is topic num
+    topic_diversity: float
+    mean_intertopic_cos_similarity: float
+    redundant_pairs: list[dict]
+    noise_ratio: float
+    prob_distributions: list[dict]
 
 class ModelOutput(LanceModel):
     name: str

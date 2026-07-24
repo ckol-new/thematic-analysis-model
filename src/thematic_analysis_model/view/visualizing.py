@@ -1,4 +1,5 @@
 from thematic_analysis_model.model.data_management import Manager
+from thematic_analysis_model.model.config import SENTENCE_TBL_NAME
 
 from bertopic import BERTopic
 import plotly as pl
@@ -19,7 +20,18 @@ class Visualizer:
     def visualize_topic_hierarchy(self, model: BERTopic) -> Figure:
         return model.visualize_hierarchy()
 
-    def visualize_document_map(self, model: BERTopic, docs, embeddings, reduced_embeddings) -> Figure:
-        return model.visualize_documents(docs=docs, embeddings=embeddings, reduced_embeddings=reduced_embeddings, hide_annotations=True, hide_document_hover=True)
+    def visualize_document_map(self, model: BERTopic, manager: Manager) -> Figure:
+        docs = manager.retrieve_column_list(tbl_name=SENTENCE_TBL_NAME, condition='is_validated = true', columns=['sentence'])
+        embeddings = manager.retrieve_column_list(tbl_name=SENTENCE_TBL_NAME, condition='is_validated = true', columns=['embedding'])
+        reduced_embeddings = manager.retrieve_column_list(tbl_name=SENTENCE_TBL_NAME, condition='is_validated = true', columns=['reduced_embedding'])
+
+        fig = model.visualize_documents(
+            docs=docs,
+            embeddings=embeddings,
+            reduced_embeddings=reduced_embeddings,
+            hide_annotations=True,
+            hide_document_hover=True
+        )
+        return fig
 
 

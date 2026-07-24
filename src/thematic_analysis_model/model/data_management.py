@@ -9,6 +9,7 @@ from pathlib import Path
 from sentence_transformers import SentenceTransformer
 from bertopic import BERTopic
 from umap import UMAP
+from umap.parametric_umap import ParametricUMAP
 from hdbscan import HDBSCAN
 from bertopic.vectorizers import ClassTfidfTransformer
 from sklearn.feature_extraction.text import CountVectorizer
@@ -72,13 +73,22 @@ class Loader:
             )
         else: # this needs to be updated as I change what parameters I am tuning
             embedding_model = self.load_embedding_model(model_name=trial_config.embedding_model)
-            umap_model = UMAP(
-                n_neighbors=trial_config.umap_n_neighbours,
-                n_components=trial_config.umap_n_components,
-                metric=trial_config.umap_metric,
-                min_dist=trial_config.umap_min_dist,
-                random_state=trial_config.umap_random_state
-            )
+            if trial_config.umap_parametric:
+                umap_model = ParametricUMAP(
+                    n_neighbors=trial_config.umap_n_neighbours,
+                    n_components=trial_config.umap_n_components,
+                    metric=trial_config.umap_metric,
+                    min_dist=trial_config.umap_min_dist,
+                    random_state=trial_config.umap_random_state
+                )
+            else:
+                umap_model = UMAP(
+                    n_neighbors=trial_config.umap_n_neighbours,
+                    n_components=trial_config.umap_n_components,
+                    metric=trial_config.umap_metric,
+                    min_dist=trial_config.umap_min_dist,
+                    random_state=trial_config.umap_random_state
+                )
             hdbscan_model = HDBSCAN(
                 min_cluster_size=trial_config.hdbscan_min_cluster_size,
                 min_samples=trial_config.hdbscan_min_samples,
@@ -219,6 +229,10 @@ class Manager:
             .when_matched_update_all()
             .execute(data)
         )
+
+    def add_model_output(self, model_output: ModelOutput):
+        tbl = self.check_tbl_name(tbl_name=MODEL_OUTPUT_TBL_NAME)
+        tbl.add([model_output])
 
 
 
