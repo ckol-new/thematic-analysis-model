@@ -135,6 +135,30 @@ class Manager:
 
         return tbl
 
+    def reset_processed_flags(self):
+        tbl = self.check_tbl_name(SENTENCE_TBL_NAME)
+        tbl.update(values_sql={
+            'is_processed': 'cast(false as boolean)'
+        })
+        self.reset_embedding_flags()
+    def reset_embedding_flags(self):
+        tbl = self.check_tbl_name(SENTENCE_TBL_NAME)
+        tbl.update(values_sql={
+            'is_embedded': 'cast(false as boolean)'
+        })
+        self.reset_modelling_flags()
+    def reset_modelling_flags(self):
+        tbl = self.check_tbl_name(SENTENCE_TBL_NAME)
+        tbl.update(values_sql={
+            'is_modelled': 'cast(false as boolean)'
+        })
+        self.reset_validation_flags()
+    def reset_validation_flags(self):
+        tbl = self.check_tbl_name(SENTENCE_TBL_NAME)
+        tbl.update(values_sql={
+            'is_validated': 'cast(false as boolean)'
+        })
+
     # returns number of rows that matches its condition
     #   if condition is none, returns length of db
     def get_num_match_condition(self, tbl_name: str, condition: str | None = None):
@@ -235,4 +259,9 @@ class Manager:
         tbl.add([model_output])
 
 
+    # save model, either as safetensors or pickle
+    def save_model(self, path: Path | str, model: BERTopic, serialization: str = 'safetensors'):
+        model.save(path=path, serialization=serialization)
 
+    def load_model(self, path: Path | str) -> BERTopic:
+        return BERTopic.load(path=path, embedding_model=EMBEDDING_MODEL_NAME)
