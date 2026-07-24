@@ -40,9 +40,9 @@ class Validator:
                 name=self.trial_config.trial_name,
                 batch_name=self.trial_config.batch_name,
                 trial_config=self.trial_config,
-                validation_metrics=validation_metric,
+                validation_metrics=validation_metric.model_dump_json(),
                 topic_map=topic_map.to_json(),
-                document_map=doc_map.to_json(),
+                document_map=doc_map.to_json() if doc_map else None,
                 heatmap=heatmap.to_json(),
                 hierarchy_map=hierarchy_map.to_json()
             )
@@ -81,9 +81,9 @@ class Validator:
                 {
                     'uuid_': uuid,
                     'is_validated': True,
-                    'reduced_embedding': red_embedding,
+                    'reduced_embedding': list(red_embedding),
                     'topic': topic,
-                    'probabilities': prob,
+                    'probabilities': list(prob),
                 } for uuid, red_embedding, topic, prob in zip(uuids, reduced_embeddings, topics, probs, strict=True)
             ]
             self.manager.matched_update(
@@ -135,7 +135,10 @@ class Validator:
         topic_map = self.visualizer.visualize_topic_map(model=self.model)
 
         # get document map
-        doc_map = self.visualizer.visualize_document_map(model=self.model, manager=self.manager)
+        if self.trial_config.visualize_documents == True:
+            doc_map = self.visualizer.visualize_document_map(model=self.model, manager=self.manager)
+        else: 
+            doc_map = None
 
         # get heatmap
         heatmap = self.visualizer.visualize_topic_heatmap(model=self.model)

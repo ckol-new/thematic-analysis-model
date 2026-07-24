@@ -61,6 +61,7 @@ class TrialConfig(BaseModel):
     stopwords_path: str | None = None # where stopwords will be
     nr_topics: int | None = None
     top_n_words: int = 10 # really no point increasing beyond 15 or 20
+    visualize_documents: bool = False # really slow to do this, so while fine-tuning have this false.
 
 
 class ValidationMetric(BaseModel):

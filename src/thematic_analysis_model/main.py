@@ -1,7 +1,7 @@
 # main file
 from thematic_analysis_model.model.config import *
 from thematic_analysis_model.model.scrape_config import alzconnected_ALL, dementiasupportforum_ALL
-from thematic_analysis_model.model.dataclasses import TrialConfig
+from thematic_analysis_model.model.dataclasses import TrialConfig, ModelOutput
 from thematic_analysis_model.model.data_management import Loader, Manager
 from thematic_analysis_model.model.scraping import alzconnectedScrapingPipeline, dementiasupportforumScrapingPipeline,  ScrapingPipeline, Processor, ScrapeQueue
 from thematic_analysis_model.model.embedding import Embedder
@@ -11,6 +11,12 @@ from thematic_analysis_model.model.validating import Validator
 
 import pprint
 import asyncio
+import plotly
+
+def reset_model_output():
+    loader=Loader()
+    db = loader.db
+    db.create_table(MODEL_OUTPUT_TBL_NAME, schema=ModelOutput, mode='overwrite')
 
 def scrape():
     loader = Loader()
@@ -39,12 +45,19 @@ def model_and_validate():
     loader = Loader()
     manager= Manager(loader=loader)
     manager.reset_modelling_flags()
+    manager.clean_lancedb()
+
+    trial_config = TrialConfig(
+        trial_name='testing',
+        id_='id',
+        trial_num=1,
+    )
 
     # model
     modeller = Modeller(
         loader=loader,
         manager=manager,
-        trial_config=None
+        trial_config=trial_config
     )
     model = modeller.run_modeller(save_reduced_embeddings=True)
     model_path_test = Path.cwd() / 'test_model' / 'test'
@@ -53,9 +66,9 @@ def model_and_validate():
 
     # valdiate
     visualizer = Visualizer(manager=manager)
-    validator = Validator(model=loaded_model, loader=loader, manager=manager, visualizer=visualizer, trial_config=None)
-    validation_metrics, topic_map, doc_map, heatmap, hierarchy_map = validator.run_validator()
-    topic_map.show()
+    validator = Validator(model=loaded_model, loader=loader, manager=manager, visualizer=visualizer, trial_config=trial_config)
+    model_output = validator.run_validator()
+    doc_map = plotly.io.read_json(model_output.document_map)
     doc_map.show()
 
 
@@ -65,13 +78,11 @@ def model_and_validate():
 def main():
     loader = Loader() # loader is composed into classes that need table access directly. 
     manager = Manager(loader=loader) # manager gives classes access to the table, to update or retrieve data.
-    print(manager.get_num_match_condition('sentence', condition='is_modelled = false'))
-    print(manager.get_num_match_condition('sentence', condition='is_modelled = true'))
-    print(loader.connect('sentence').search().select(['sentence', 'is_modelled', 'is_validated']).to_pandas().head(1000))
+
 
 
 
 
 
 if __name__ == "__main__":
-    model_and_validate()
+    main()

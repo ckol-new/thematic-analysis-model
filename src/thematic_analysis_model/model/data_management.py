@@ -5,6 +5,7 @@ import lancedb
 import pandas as pd
 import random
 from pathlib import Path
+from datetime import timedelta
 
 from sentence_transformers import SentenceTransformer
 from bertopic import BERTopic
@@ -123,14 +124,25 @@ class Manager:
         self.__loader = loader # loader to access data
         self.tbl1, self.tbl2, self.tbl3 = self.__loader.connect_all() 
 
+    # clean lance versioning, save space
+    def clean_lancedb(self, days: int = 1):
+        ctbl = self.__loader.connect(CONTENT_TBL_NAME)
+        stbl = self.__loader.connect(SENTENCE_TBL_NAME)
+        motbl = self.__loader.connect(MODEL_OUTPUT_TBL_NAME)
+
+        ctbl.optimize(cleanup_older_than=timedelta(days=days))
+        stbl.optimize(cleanup_older_than=timedelta(days=days))
+        motbl.optimize(cleanup_older_than=timedelta(days=days))
+
+
     def check_tbl_name(self, tbl_name: str) -> lancedb.Table:
         # get relevant table
         if self.tbl1.name == tbl_name:
             tbl = self.tbl1
         elif self.tbl2.name == tbl_name:
             tbl = self.tbl2
-        elif self.tbl2.name == tbl_name:
-            tbl = self.tbl2
+        elif self.tbl3.name == tbl_name:
+            tbl = self.tbl3
         else: 
             raise Exception(f'Error; no table of name {tbl_name} in lance')
 
