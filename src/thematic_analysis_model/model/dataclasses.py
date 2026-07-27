@@ -76,6 +76,7 @@ class ValidationMetric(BaseModel):
     prob_distributions: list[dict]
 
 class ModelOutput(LanceModel):
+    id_: str
     name: str
     batch_name: str | None = None
     trial_config: TrialConfig

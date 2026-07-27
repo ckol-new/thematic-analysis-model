@@ -4,11 +4,12 @@ from .config import SENTENCE_TBL_NAME, VALIDATING_BATCH_SIZE, FILE_IO_BATCH_SIZE
 from thematic_analysis_model.view.visualizing import Visualizer
 
 from bertopic import BERTopic
+from bertopic.dimensionality import BaseDimensionalityReduction
 from tqdm import tqdm
-import hdbscan
 from sklearn.metrics.pairwise import cosine_similarity
 import gc
 import numpy as np
+import uuid
 
 # validation of models
 class Validator:
@@ -33,19 +34,22 @@ class Validator:
         topic_map, doc_map, heatmap, hierarchy_map = self.get_visualizations()
 
         # save model output
+        print('saving output')
         if not self.trial_config: 
             return validation_metric, topic_map, doc_map, heatmap, hierarchy_map
         else:
             model_output = ModelOutput(
+                id_=str(uuid.uuid4()),
                 name=self.trial_config.trial_name,
                 batch_name=self.trial_config.batch_name,
                 trial_config=self.trial_config,
                 validation_metrics=validation_metric.model_dump_json(),
-                topic_map=topic_map.to_json(),
-                document_map=doc_map.to_json() if doc_map else None,
-                heatmap=heatmap.to_json(),
-                hierarchy_map=hierarchy_map.to_json()
+                topic_map=topic_map.to_json(engine='json'),
+                document_map=doc_map.to_json(engine='json') if doc_map else None,
+                heatmap=heatmap.to_json(engine='json'),
+                hierarchy_map=hierarchy_map.to_json(engine='json')
             )
+        print('a')
         self.manager.add_model_output(model_output=model_output)
         return model_output
 
@@ -97,6 +101,7 @@ class Validator:
     # get validation metrics
     #   including NPMI score, pairwise topic coherence, intertopic cosine similarity, topic diversity, probability values, redundant pairs, stability metrics
     def get_validation_metrics(self) -> ValidationMetric:
+        print('getting validation metrics')
         # get NPMI
         #   NEED TO IMPLEMENT THIS
         npmi_core = 1.0
@@ -132,18 +137,22 @@ class Validator:
     # gets visualizations using functions from Visualizer
     def get_visualizations(self):
         # get topic map
+        print('getting topic map')
         topic_map = self.visualizer.visualize_topic_map(model=self.model)
 
         # get document map
         if self.trial_config.visualize_documents == True:
+            print('getting doc_map')
             doc_map = self.visualizer.visualize_document_map(model=self.model, manager=self.manager)
         else: 
             doc_map = None
 
         # get heatmap
+        print('getting heat map')
         heatmap = self.visualizer.visualize_topic_heatmap(model=self.model)
 
         # get topic hierarchy
+        print('getting hierarchy map')
         hierarchy = self.visualizer.visualize_topic_hierarchy(model=self.model)
 
         return topic_map, doc_map, heatmap, hierarchy

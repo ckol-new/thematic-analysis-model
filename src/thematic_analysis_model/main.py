@@ -13,6 +13,7 @@ import pprint
 import asyncio
 import plotly
 
+
 def reset_model_output():
     loader=Loader()
     db = loader.db
@@ -51,6 +52,11 @@ def model_and_validate():
         trial_name='testing',
         id_='id',
         trial_num=1,
+        umap_parametric=False,
+        umap_n_neighbours=30,
+        umap_n_components=5,
+        hdbscan_min_cluster_size=30,
+        hdbscan_min_samples=5,
     )
 
     # model
@@ -68,8 +74,33 @@ def model_and_validate():
     visualizer = Visualizer(manager=manager)
     validator = Validator(model=loaded_model, loader=loader, manager=manager, visualizer=visualizer, trial_config=trial_config)
     model_output = validator.run_validator()
-    doc_map = plotly.io.read_json(model_output.document_map)
-    doc_map.show()
+    print('rendering')
+    topic_map = plotly.io.from_json(model_output.topic_map, engine='json')
+    topic_map.show()
+
+def validate():
+    loader = Loader()
+    manager = Manager(loader=loader)
+    manager.clean_lancedb()
+    manager.reset_validation_flags()
+
+    model_path_test = Path.cwd() / 'test_model' / 'test'
+    loaded_model = manager.load_model(path=model_path_test)
+
+    trial_config = TrialConfig(
+        trial_name='testing',
+        id_='id',
+        trial_num=1,
+        umap_parametric=False,
+        umap_n_neighbours=30,
+        umap_n_components=5,
+        hdbscan_min_cluster_size=30,
+        hdbscan_min_samples=5,
+    )
+    visualizer = Visualizer(manager=manager)
+    validator = Validator(model=loaded_model, loader=loader, manager=manager, visualizer=visualizer, trial_config=trial_config)
+    mo = validator.run_validator()
+    plotly.io.from_json(mo.topic_map, engine='json').show()
 
 
 
@@ -85,4 +116,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    model_and_validate()
+    

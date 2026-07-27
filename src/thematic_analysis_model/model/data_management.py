@@ -80,7 +80,7 @@ class Loader:
                     n_components=trial_config.umap_n_components,
                     metric=trial_config.umap_metric,
                     min_dist=trial_config.umap_min_dist,
-                    random_state=trial_config.umap_random_state
+                    random_state=trial_config.umap_random_state,
                 )
             else:
                 umap_model = UMAP(

@@ -3,6 +3,7 @@ from .dataclasses import TrialConfig
 from .config import SENTENCE_TBL_NAME, MODEL_BATCH_SIZE, MERGE_BATCH_SIZE
 
 from bertopic import BERTopic
+from pathlib import Path
 from tqdm import tqdm
 from copy import deepcopy
 import numpy as np
@@ -33,6 +34,7 @@ class Modeller:
             desc='MODELLING',
             unit='sentences'
             )
+
         submodels: list[BERTopic] = []
         baseline_model = self.loader.load_bertopic_model(trial_config=self.trial_config)
         for batch in self.manager.batch_generator(
@@ -47,7 +49,11 @@ class Modeller:
             uuids = batch['uuid_'].tolist()
 
             # duplicate model 
-            empty_model = deepcopy(baseline_model)
+            # if parametric umap, needs fresh instantiation
+            if self.trial_config.umap_parametric:
+                empty_model = self.loader.load_bertopic_model(trial_config=self.trial_config)
+            else:
+                empty_model = deepcopy(baseline_model)
 
             # model batch, save data + update bools
             sub_model: BERTopic = empty_model.fit(documents=docs, embeddings=np.array(embeddings)) 
