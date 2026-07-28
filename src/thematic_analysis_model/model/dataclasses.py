@@ -48,7 +48,7 @@ class TrialConfig(BaseModel):
     id_: str
     trial_num: int
     batch_name: str | None = None
-    date: str = str(datetime.today())
+    date: str = datetime.now().strftime("%Y/%m/%d")
     embedding_model: str = EMBEDDING_MODEL_NAME
     umap_parametric: bool = False
     umap_n_neighbours: int = 15

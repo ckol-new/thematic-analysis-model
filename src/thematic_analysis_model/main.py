@@ -131,4 +131,8 @@ def main():
 
 
 if __name__ == "__main__":
-    ...
+    model_and_validate()
+    validate()
+    validate()
+    validate()
+    validate()
