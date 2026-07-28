@@ -108,9 +108,17 @@ def test_query_engine():
     loader=Loader()
     manager=Manager(loader=loader)
     query_engine = QueryEngine(manager=manager)
-    print(query_engine.handle_input('asdasd_=testing'))
-
-    ...
+    trial_config = TrialConfig(
+        trial_name='testing',
+        id_='id',
+        trial_num=1,
+        umap_parametric=False,
+        umap_n_neighbours=30,
+        umap_n_components=5,
+        hdbscan_min_cluster_size=30,
+        hdbscan_min_samples=5,
+    )
+    [manager.add_model_output(ModelOutput(trial_config=trial_config, validation_metrics='', topic_map=None, document_map=None, heatmap=None, hierarchy_map=None)) for i in range(20)]
 
 
 def main():
@@ -123,5 +131,4 @@ def main():
 
 
 if __name__ == "__main__":
-    test_query_engine()
-    
+    ...

@@ -269,7 +269,7 @@ class Manager:
 
     def get_model_output(self, condition: str) -> list[ModelOutput]:
         tbl = self.check_tbl_name(tbl_name=MODEL_OUTPUT_TBL_NAME)
-        result = tbl.search().where(condition).to_pydantic()
+        result = tbl.search().where(condition).to_pydantic(model=ModelOutput)
         return result
 
     def add_model_output(self, model_output: ModelOutput):

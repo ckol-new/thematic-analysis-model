@@ -2,6 +2,7 @@
 from lancedb.pydantic import LanceModel, Vector
 from pydantic import BaseModel, TypeAdapter
 from .config import EMBEDDING_DIMENSIONS, EMBEDDING_MODEL_NAME
+from datetime import datetime
 
 from pathlib import Path
 
@@ -47,6 +48,7 @@ class TrialConfig(BaseModel):
     id_: str
     trial_num: int
     batch_name: str | None = None
+    date: str = str(datetime.today())
     embedding_model: str = EMBEDDING_MODEL_NAME
     umap_parametric: bool = False
     umap_n_neighbours: int = 15
@@ -76,9 +78,6 @@ class ValidationMetric(BaseModel):
     prob_distributions: list[dict]
 
 class ModelOutput(LanceModel):
-    id_: str
-    name: str
-    batch_name: str | None = None
     trial_config: TrialConfig
     validation_metrics: str # json str
     topic_map: str | None# json str of plotly chart

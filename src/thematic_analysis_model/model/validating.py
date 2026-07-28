@@ -39,9 +39,6 @@ class Validator:
             return validation_metric, topic_map, doc_map, heatmap, hierarchy_map
         else:
             model_output = ModelOutput(
-                id_=str(uuid.uuid4()),
-                name=self.trial_config.trial_name,
-                batch_name=self.trial_config.batch_name,
                 trial_config=self.trial_config,
                 validation_metrics=validation_metric.model_dump_json(),
                 topic_map=topic_map.to_json(engine='json'),
