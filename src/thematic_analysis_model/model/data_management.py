@@ -267,6 +267,11 @@ class Manager:
             .execute(data)
         )
 
+    def get_model_output(self, condition: str) -> list[ModelOutput]:
+        tbl = self.check_tbl_name(tbl_name=MODEL_OUTPUT_TBL_NAME)
+        result = tbl.search().where(condition).to_pydantic()
+        return result
+
     def add_model_output(self, model_output: ModelOutput):
         tbl = self.check_tbl_name(tbl_name=MODEL_OUTPUT_TBL_NAME)
         tbl.add([model_output])

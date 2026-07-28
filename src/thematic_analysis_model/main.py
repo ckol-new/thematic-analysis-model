@@ -8,6 +8,7 @@ from thematic_analysis_model.model.embedding import Embedder
 from thematic_analysis_model.model.modelling import Modeller
 from thematic_analysis_model.view.visualizing import Visualizer
 from thematic_analysis_model.model.validating import Validator
+from thematic_analysis_model.controller.query_engine import QueryEngine
 
 import pprint
 import asyncio
@@ -103,7 +104,13 @@ def validate():
     plotly.io.from_json(mo.topic_map, engine='json').show()
 
 
+def test_query_engine():
+    loader=Loader()
+    manager=Manager(loader=loader)
+    query_engine = QueryEngine(manager=manager)
+    print(query_engine.handle_input('asdasd_=testing'))
 
+    ...
 
 
 def main():
@@ -116,5 +123,5 @@ def main():
 
 
 if __name__ == "__main__":
-    model_and_validate()
+    test_query_engine()
     

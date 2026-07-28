@@ -2,7 +2,8 @@
 from pathlib import Path
 
 # Paths
-DATABASE_PATH = Path.cwd() / 'db'
+DATABASE_PATH = Path('/Users/christopher.kollar/research/HealthyCityLab/DementiaForumAnalysis/thematic-analysis-model/db')
+
 
 # Global Vars
 CONTENT_TBL_NAME = "content"
