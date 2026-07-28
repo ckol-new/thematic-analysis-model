@@ -85,9 +85,5 @@ class ModelOutput(LanceModel):
     heatmap: str | None
     hierarchy_map: str | None
     
-
-    
-
-
-
 # Adapters: enable pydantic dataclass adaptation to json, str, dict, etc.
+validation_metric_adapter = TypeAdapter(ValidationMetric)

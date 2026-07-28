@@ -120,7 +120,6 @@ def test_query_engine():
     )
     [manager.add_model_output(ModelOutput(trial_config=trial_config, validation_metrics='', topic_map=None, document_map=None, heatmap=None, hierarchy_map=None)) for i in range(20)]
 
-
 def main():
     loader = Loader() # loader is composed into classes that need table access directly. 
     manager = Manager(loader=loader) # manager gives classes access to the table, to update or retrieve data.
@@ -132,7 +131,3 @@ def main():
 
 if __name__ == "__main__":
     model_and_validate()
-    validate()
-    validate()
-    validate()
-    validate()
