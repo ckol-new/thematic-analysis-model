@@ -16,7 +16,10 @@ class QueryEngine:
 
     # input handling
     #   for side bar input, outputs query needed for lancedb
-    def handle_input(self, text:str) -> str:
+    def handle_input(self, text:str) -> str | None:
+        if not text:
+            return None
+
         text = text.rstrip() # remove whitespace
 
         # check search mode

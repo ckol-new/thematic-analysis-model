@@ -351,13 +351,22 @@ class Processor:
     #   update all relevant flags
     #   deduplicate and validate: remove usernames
     #   post process
-    def run_processor(self, BATCH_SIZE: int = FILE_IO_BATCH_SIZE):
+    def run_processor(self, BATCH_SIZE: int = 1000):
         # get usernames set
         metadata_dicts: list[str] = self.manager.retrieve_column_list(tbl_name=CONTENT_TBL_NAME, columns=['metadata_'])
-        usernames: list[str] = [i['username'].lower() for i in metadata_dicts] # all in lowercase
-        set().update(usernames) #usernames as set
+        usernames = {
+            i['username'].lower() 
+            for i in metadata_dicts 
+            if i and i.get('username')
+        }
         del metadata_dicts
         gc.collect()
+
+        pbar = tqdm(
+            total=self.manager.get_num_match_condition(CONTENT_TBL_NAME, condition='is_split = false'),
+            desc='PROCESSING',
+            unit='post'
+            )
 
         # load in batches: rows not already split
         #   split into sentences
@@ -366,7 +375,8 @@ class Processor:
         for batch in self.manager.batch_generator(
             tbl_name=CONTENT_TBL_NAME,
             condition='is_split = false',
-            columns=['text', 'uuid_', 'metadata_']
+            columns=['text', 'uuid_', 'metadata_'],
+            BATCH_SIZE=BATCH_SIZE
         ):
             batch_text = batch['text'].tolist()
             batch_uuids = batch['uuid_'].tolist()
@@ -406,6 +416,7 @@ class Processor:
                 self.save_processed_content(
                     save_batch=current_save_batch
                 )
+                pbar.update(len(current_save_batch))
                 current_save_batch.clear()
                 gc.collect()
         
@@ -413,8 +424,11 @@ class Processor:
             self.save_processed_content(
                 save_batch=current_save_batch
             )
+            pbar.update(len(current_save_batch))
             current_save_batch.clear()
             gc.collect()
+
+        pbar.close()
 
     # split text into sentences
     def split_text(self, text: str) -> list[str]:

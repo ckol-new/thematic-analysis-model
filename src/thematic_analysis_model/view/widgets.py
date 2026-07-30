@@ -2,6 +2,7 @@ from thematic_analysis_model.model.dataclasses import validation_metric_adapter,
 from .data_for_widgets import ModelOutputSearchBarViewData
 
 import streamlit as st
+from plotly.io import from_json
 import pandas as pd
 import kaleido
 import contextlib
@@ -51,7 +52,6 @@ def model_search_view(model_view_data: ModelOutputSearchBarViewData, id_: str, v
                 if button:
                     set_model_state(model_view_data.model_output)
                     st.rerun(scope='app')
-
         yield
 
 # load model from model search view
@@ -69,14 +69,26 @@ def model_main_view():
     config_dict = trial_config.model_dump()
     st.dataframe(config_dict)
 
-
-
     # validation metric table
     validation_metrics = validation_metric_adapter.validate_json(model_output.validation_metrics)
     metric_dict = validation_metrics.model_dump()
     st.dataframe(metric_dict)
 
     # graphs
+    topic_map = from_json(model_output.topic_map, engine='json') if model_output.topic_map else None
+    if topic_map:
+        st.plotly_chart(topic_map)
 
+    doc_map = from_json(model_output.document_map, engine='json') if model_output.document_map else None
+    if doc_map:
+        st.plotly_chart(doc_map)
+
+    heatmap = from_json(model_output.heatmap, engine='json') if model_output.heatmap else None
+    if heatmap:
+        st.plotly_chart(heatmap)
+
+    hierarchy_map = from_json(model_output.hierarchy_map, engine='json') if model_output.hierarchy_map else None
+    if hierarchy_map:
+        st.plotly_chart(hierarchy_map)
 
     yield

@@ -21,8 +21,14 @@ if 'current_batch' not in st.session_state:
 if 'active_mode' not in st.session_state:
     st.session_state.active_mode = None
 
+# reset app (clears cache)
+def reset_app():
+    st.cache_data.clear()
+    st.cache_resource.clear()
+    st.rerun(scope='app')
 
 # cacheing
+
 @st.cache_resource
 def get_utility_objs():
     loader = Loader()
@@ -41,12 +47,17 @@ st.title('Model View')
 @st.fragment
 def side_bar_fragment():
     with st.sidebar:
-
         st.header("Search Database")
+        # reload db button
+        reload_db_button = st.button(label='reconnect to db')
+        if reload_db_button:
+            reset_app()
+
+        # search bar form
         with st.form(key='sidebar_form'):
             l_col, r_col = st.columns([3,2], vertical_alignment='center')
             with l_col:
-                search_input= st.text_input(label='trial name: ', label_visibility='collapsed')
+                search_input= st.text_input(label='trial name: ', label_visibility='collapsed') or None
                 check = st.checkbox(label='thumbnail', value=False)
             with r_col:
                 button = st.form_submit_button('search')
@@ -54,6 +65,7 @@ def side_bar_fragment():
             search_results = query_engine.query_db(condition=query_engine.handle_input(text=search_input))
             st.session_state.search_results = search_results
 
+        # render search results
         with st.container(height=500):
             for r in st.session_state.search_results:
                 model_view_data = ModelOutputSearchBarViewData(

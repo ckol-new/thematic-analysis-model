@@ -1,7 +1,8 @@
 # main file
 from thematic_analysis_model.model.config import *
+from thematic_analysis_model.model.trial import TrialQueue
 from thematic_analysis_model.model.scrape_config import alzconnected_ALL, dementiasupportforum_ALL
-from thematic_analysis_model.model.dataclasses import TrialConfig, ModelOutput
+from thematic_analysis_model.model.dataclasses import TrialConfig, ModelOutput, Sentence
 from thematic_analysis_model.model.data_management import Loader, Manager
 from thematic_analysis_model.model.scraping import alzconnectedScrapingPipeline, dementiasupportforumScrapingPipeline,  ScrapingPipeline, Processor, ScrapeQueue
 from thematic_analysis_model.model.embedding import Embedder
@@ -25,8 +26,7 @@ def scrape():
     # loader.first_init() # reset on tests
     manager = Manager(loader=loader)
 
-    ScrapeQueue(loader=loader, manager=manager, scrape_configs=alzconnected_ALL) # run scrapers
-
+    ScrapeQueue(loader=loader, manager=manager, scrape_configs=dementiasupportforum_ALL) # run scrapers
     print(manager.get_num_match_condition(tbl_name='content'))
     
 def process_and_embed():
@@ -43,66 +43,25 @@ def process_and_embed():
 
     print(manager.get_num_match_condition('sentence'))
 
-def model_and_validate():
-    loader = Loader()
-    manager= Manager(loader=loader)
-    manager.reset_modelling_flags()
-    manager.clean_lancedb()
-
-    trial_config = TrialConfig(
-        trial_name='testing',
-        id_='id',
-        trial_num=1,
-        umap_parametric=False,
-        umap_n_neighbours=30,
-        umap_n_components=5,
-        hdbscan_min_cluster_size=30,
-        hdbscan_min_samples=5,
-    )
-
-    # model
-    modeller = Modeller(
-        loader=loader,
-        manager=manager,
-        trial_config=trial_config
-    )
-    model = modeller.run_modeller(save_reduced_embeddings=True)
-    model_path_test = Path.cwd() / 'test_model' / 'test'
-    manager.save_model(path=model_path_test, model=model)
-    loaded_model = manager.load_model(path=model_path_test)
-
-    # valdiate
-    visualizer = Visualizer(manager=manager)
-    validator = Validator(model=loaded_model, loader=loader, manager=manager, visualizer=visualizer, trial_config=trial_config)
-    model_output = validator.run_validator()
-    print('rendering')
-    topic_map = plotly.io.from_json(model_output.topic_map, engine='json')
-    topic_map.show()
-
-def validate():
+def trial_queue_test():
     loader = Loader()
     manager = Manager(loader=loader)
-    manager.clean_lancedb()
-    manager.reset_validation_flags()
 
-    model_path_test = Path.cwd() / 'test_model' / 'test'
-    loaded_model = manager.load_model(path=model_path_test)
-
-    trial_config = TrialConfig(
-        trial_name='testing',
-        id_='id',
-        trial_num=1,
-        umap_parametric=False,
-        umap_n_neighbours=30,
-        umap_n_components=5,
+    trial_configs = TrialQueue.generate_trial_configs(
+        trial_name='ALL_DEFAULT_hdbscan_min_cluster_size_30_umap_n_components_7_hdbscan_min_samples',
+        batch_name='ALL_DEFAULT_hdbscan_min_cluster_size_30_umap_n_components_7_hdbscan_min_samples',
+        model_save_path=(Path('/Users/christopher.kollar/research/HealthyCityLab/DementiaForumAnalysis/thematic-analysis-model/models') / 'fine_tuning').resolve(),
         hdbscan_min_cluster_size=30,
-        hdbscan_min_samples=5,
+        hdbscan_min_samples=[3, 5, 7, 10, 15, 20, 25, 30],
+        umap_n_components=7,
     )
-    visualizer = Visualizer(manager=manager)
-    validator = Validator(model=loaded_model, loader=loader, manager=manager, visualizer=visualizer, trial_config=trial_config)
-    mo = validator.run_validator()
-    plotly.io.from_json(mo.topic_map, engine='json').show()
 
+    trial_queue = TrialQueue(
+        loader=loader,
+        manager=manager,
+        trial_configs=trial_configs
+    )
+    trial_queue.run_queue()
 
 def test_query_engine():
     loader=Loader()
@@ -111,7 +70,6 @@ def test_query_engine():
     trial_config = TrialConfig(
         trial_name='testing',
         id_='id',
-        trial_num=1,
         umap_parametric=False,
         umap_n_neighbours=30,
         umap_n_components=5,
@@ -122,12 +80,8 @@ def test_query_engine():
 
 def main():
     loader = Loader() # loader is composed into classes that need table access directly. 
-    manager = Manager(loader=loader) # manager gives classes access to the table, to update or retrieve data.
-
-
-
-
-
+    manager=Manager(loader=loader)
+    manager.clean_lancedb(0)
 
 if __name__ == "__main__":
-    model_and_validate()
+    trial_queue_test()

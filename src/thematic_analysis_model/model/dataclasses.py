@@ -5,8 +5,7 @@ from .config import EMBEDDING_DIMENSIONS, EMBEDDING_MODEL_NAME
 from datetime import datetime
 
 from pathlib import Path
-
-
+import uuid
 
 class Metadata(BaseModel): # metaedata of content, not of individual sentence, mostly for locating post in internet
     url: str
@@ -45,11 +44,12 @@ class Sentence(LanceModel):
 
 class TrialConfig(BaseModel):
     trial_name: str
-    id_: str
+    id_: str = str(uuid.uuid4())
     trial_num: int
     batch_name: str | None = None
     date: str = datetime.now().strftime("%Y/%m/%d")
     embedding_model: str = EMBEDDING_MODEL_NAME
+    model_save_path: str | None = None
     umap_parametric: bool = False
     umap_n_neighbours: int = 15
     umap_n_components: int = 2
@@ -64,7 +64,6 @@ class TrialConfig(BaseModel):
     nr_topics: int | None = None
     top_n_words: int = 10 # really no point increasing beyond 15 or 20
     visualize_documents: bool = False # really slow to do this, so while fine-tuning have this false.
-
 
 class ValidationMetric(BaseModel):
     num_topics: int
