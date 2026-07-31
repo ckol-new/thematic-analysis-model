@@ -1,3 +1,4 @@
+from .frozen_umap_model import FrozenParametricUMAP
 from .config import DATABASE_PATH, CONTENT_TBL_NAME, SENTENCE_TBL_NAME, MODEL_OUTPUT_TBL_NAME, FILE_IO_BATCH_SIZE, EMBEDDING_MODEL_NAME
 from .dataclasses import Content, Sentence, ModelOutput, TrialConfig
 
@@ -75,13 +76,7 @@ class Loader:
         else: # this needs to be updated as I change what parameters I am tuning
             embedding_model = self.load_embedding_model(model_name=trial_config.embedding_model)
             if trial_config.umap_parametric:
-                umap_model = ParametricUMAP(
-                    n_neighbors=trial_config.umap_n_neighbours,
-                    n_components=trial_config.umap_n_components,
-                    metric=trial_config.umap_metric,
-                    min_dist=trial_config.umap_min_dist,
-                    random_state=trial_config.umap_random_state,
-                )
+                umap_model = FrozenParametricUMAP() # load global parametric umap 
             else:
                 umap_model = UMAP(
                     n_neighbors=trial_config.umap_n_neighbours,
@@ -112,6 +107,19 @@ class Loader:
         return bertopic_model
 
 
+    def load_untrained_parametric_umap(self, trial_config: TrialConfig):
+        umap_model = ParametricUMAP(
+            n_neighbors=trial_config.umap_n_neighbours,
+            n_components=trial_config.umap_n_components,
+            metric=trial_config.umap_metric,
+            min_dist=trial_config.umap_min_dist,
+            random_state=trial_config.umap_random_state,
+            batch_size=1000,
+            n_epochs=200,
+            verbose=True
+        )
+        return umap_model
+        ...
 
 
 # Manager class:

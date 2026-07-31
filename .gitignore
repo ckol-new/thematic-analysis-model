@@ -24,6 +24,8 @@ lancedatabase/
 db/
 
 # other
+.paremetric_umap/
+paremetric_umap/
 .models/
 models/
 .test_model/

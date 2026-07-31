@@ -20,7 +20,7 @@ class Trial:
         self.manager = manager
 
     def run_trial(self):
-        self.manager.clean_lancedb()
+        self.manager.clean_lancedb(0)
 
         # model
         modeller = Modeller(loader=self.loader, manager=self.manager, trial_config=self.trial_config)

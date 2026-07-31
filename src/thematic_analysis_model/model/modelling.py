@@ -1,13 +1,19 @@
+from .frozen_umap_model import FrozenParametricUMAP
 from .data_management import Manager, Loader
 from .dataclasses import TrialConfig
-from .config import SENTENCE_TBL_NAME, MODEL_BATCH_SIZE, MERGE_BATCH_SIZE
+from .config import SENTENCE_TBL_NAME, MODEL_BATCH_SIZE, MERGE_BATCH_SIZE, FILE_IO_BATCH_SIZE, GLOBAL_PARAMETRIC_UMAP_PATH, GLOBAL_PARAMETRIC_UMAP_ENCODER_PATH
 
 from bertopic import BERTopic
+from umap import ParametricUMAP, load_ParametricUMAP
 from pathlib import Path
 from tqdm import tqdm
+import keras
 from copy import deepcopy
 import numpy as np
 import gc
+import pandas as pd
+import plotly.express as px
+
 
 # class around modelling
 class Modeller:
@@ -37,6 +43,8 @@ class Modeller:
 
         submodels: list[BERTopic] = []
         baseline_model = self.loader.load_bertopic_model(trial_config=self.trial_config)
+        baseline_model.verbose=False # make sure it is false
+
         for batch in self.manager.batch_generator(
             tbl_name=SENTENCE_TBL_NAME,
             condition='is_modelled = false',
@@ -56,7 +64,10 @@ class Modeller:
                 empty_model = deepcopy(baseline_model)
 
             # model batch, save data + update bools
-            sub_model: BERTopic = empty_model.fit(documents=docs, embeddings=np.array(embeddings)) 
+            if self.trial_config.umap_parametric:
+                sub_model: BERTopic = empty_model.fit(documents=docs, embeddings=np.array(embeddings))
+            else:
+                sub_model: BERTopic = empty_model.fit(documents=docs, embeddings=np.array(embeddings)) 
             self.save_model_data(model=sub_model, uuids=uuids, save_reduced_embeddings=save_reduced_embeddings)
             submodels.append(sub_model)
 
@@ -116,3 +127,19 @@ class Modeller:
             key='uuid_',
             data=data
         )
+
+
+    # model paremetric umap (DONE ONCE)
+    #   save encoder layers, not model -> load this later.
+    def model_paremetric_umap(self, umap_model: ParametricUMAP, save_path: Path, sample_size: int = FILE_IO_BATCH_SIZE):
+        embeddings = self.manager.retrieve_column_list(SENTENCE_TBL_NAME, limit=sample_size, shuffle=True, columns=['embedding'])
+        umap_model.fit(np.array(embeddings))
+        umap_model.encoder.save(save_path /'global_model.keras')
+
+        loss = umap_model.parametric_model.history.history['loss']
+        loss_dict = {i: l for i, l in enumerate(loss)}
+        loss_df = pd.DataFrame(list(loss_dict.items()), columns=['Epochs', 'Loss'])
+
+        fig = px.line(loss_df, x='Epochs', y='Loss', title='Loss Curve of Global Parametric UMAP Model')
+        return fig
+    

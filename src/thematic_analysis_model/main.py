@@ -1,3 +1,13 @@
+import os
+os.environ["NUMBA_THREADING_LAYER"] = "workqueue"
+os.environ["NUMBA_NUM_THREADS"] = "1"
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["TF_NUM_INTEROP_THREADS"] = "1"
+os.environ["TF_NUM_INTRAOP_THREADS"] = "1"
+
+import tensorflow as tf
+tf.config.set_visible_devices([], 'GPU')
+
 # main file
 from thematic_analysis_model.model.config import *
 from thematic_analysis_model.model.trial import TrialQueue
@@ -13,7 +23,8 @@ from thematic_analysis_model.controller.query_engine import QueryEngine
 
 import pprint
 import asyncio
-import plotly
+import pandas as pd
+import plotly.express as px
 
 
 def reset_model_output():
@@ -48,12 +59,12 @@ def trial_queue_test():
     manager = Manager(loader=loader)
 
     trial_configs = TrialQueue.generate_trial_configs(
-        trial_name='ALL_DEFAULT_hdbscan_min_cluster_size_30_umap_n_components_7_hdbscan_min_samples',
-        batch_name='ALL_DEFAULT_hdbscan_min_cluster_size_30_umap_n_components_7_hdbscan_min_samples',
-        model_save_path=(Path('/Users/christopher.kollar/research/HealthyCityLab/DementiaForumAnalysis/thematic-analysis-model/models') / 'fine_tuning').resolve(),
-        hdbscan_min_cluster_size=30,
-        hdbscan_min_samples=[3, 5, 7, 10, 15, 20, 25, 30],
-        umap_n_components=7,
+        trial_name='test_parametric_hdbscan_min_samples_5_umap_n_components_5',
+        batch_name='test_parametric_hdbscan_min_samples_5_umap_n_components_5',
+        model_save_path=(Path('/Users/christopher.kollar/research/HealthyCityLab/DementiaForumAnalysis/thematic-analysis-model/models') / 'testing').resolve(),
+        umap_parametric=True,
+        hdbscan_min_cluster_size=[30, 30, 30, 30, 30],
+        hdbscan_min_samples=5,
     )
 
     trial_queue = TrialQueue(
@@ -70,11 +81,9 @@ def test_query_engine():
     trial_config = TrialConfig(
         trial_name='testing',
         id_='id',
-        umap_parametric=False,
-        umap_n_neighbours=30,
-        umap_n_components=5,
-        hdbscan_min_cluster_size=30,
-        hdbscan_min_samples=5,
+        umap_parametric=True,
+        hdbscan_min_cluster_size=[30, 30, 30, 30, 30, 30],
+        hdbscan_min_samples=3,
     )
     [manager.add_model_output(ModelOutput(trial_config=trial_config, validation_metrics='', topic_map=None, document_map=None, heatmap=None, hierarchy_map=None)) for i in range(20)]
 
@@ -83,5 +92,7 @@ def main():
     manager=Manager(loader=loader)
     manager.clean_lancedb(0)
 
+
+
 if __name__ == "__main__":
-    trial_queue_test()
+    main()

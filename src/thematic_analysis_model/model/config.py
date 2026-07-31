@@ -3,7 +3,8 @@ from pathlib import Path
 
 # Paths
 DATABASE_PATH = Path('/Users/christopher.kollar/research/HealthyCityLab/DementiaForumAnalysis/thematic-analysis-model/db')
-
+GLOBAL_PARAMETRIC_UMAP_PATH = Path('/Users/christopher.kollar/research/HealthyCityLab/DementiaForumAnalysis/thematic-analysis-model/paremetric_umap')
+GLOBAL_PARAMETRIC_UMAP_ENCODER_PATH = Path('/Users/christopher.kollar/research/HealthyCityLab/DementiaForumAnalysis/thematic-analysis-model/paremetric_umap/global_model.keras')
 
 # Global Vars
 CONTENT_TBL_NAME = "content"
