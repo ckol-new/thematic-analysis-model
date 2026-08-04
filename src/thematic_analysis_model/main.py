@@ -59,11 +59,11 @@ def trial_queue_test():
     manager = Manager(loader=loader)
 
     trial_configs = TrialQueue.generate_trial_configs(
-        trial_name='test_parametric_hdbscan_min_samples_5_umap_n_components_5',
-        batch_name='test_parametric_hdbscan_min_samples_5_umap_n_components_5',
+        trial_name='test_batch_hdbscan_min_samples_5_',
+        batch_name='test_batch_hdbscan_min_samples_5_hdbscan_min_cluster_size_30,',
         model_save_path=(Path('/Users/christopher.kollar/research/HealthyCityLab/DementiaForumAnalysis/thematic-analysis-model/models') / 'testing').resolve(),
         umap_parametric=True,
-        hdbscan_min_cluster_size=[30, 30, 30, 30, 30],
+        hdbscan_min_cluster_size=[30, 30, 30, 30, 30, 30, 30, 30, 30, 30],
         hdbscan_min_samples=5,
     )
 
@@ -74,19 +74,11 @@ def trial_queue_test():
     )
     trial_queue.run_queue()
 
-def test_query_engine():
-    loader=Loader()
-    manager=Manager(loader=loader)
-    query_engine = QueryEngine(manager=manager)
-    trial_config = TrialConfig(
-        trial_name='testing',
-        id_='id',
-        umap_parametric=True,
-        hdbscan_min_cluster_size=[30, 30, 30, 30, 30, 30],
-        hdbscan_min_samples=3,
-    )
-    [manager.add_model_output(ModelOutput(trial_config=trial_config, validation_metrics='', topic_map=None, document_map=None, heatmap=None, hierarchy_map=None)) for i in range(20)]
-
+def test_stability_metrics():
+    loader = Loader()
+    stability_data = Validator.get_model_stability_metrics(loader, batch_name='test_batch_hdbscan_min_samples_5_hdbscan_min_cluster_size_30,')
+    pprint.pprint(stability_data)
+    
 def main():
     loader = Loader() # loader is composed into classes that need table access directly. 
     manager=Manager(loader=loader)
@@ -95,4 +87,4 @@ def main():
 
 
 if __name__ == "__main__":
-    trial_queue_test()
+    test_stability_metrics()

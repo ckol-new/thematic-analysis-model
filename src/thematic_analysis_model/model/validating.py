@@ -1,6 +1,6 @@
 from .data_management import Loader, Manager
 from .dataclasses import TrialConfig, ValidationMetric, ModelOutput
-from .config import SENTENCE_TBL_NAME, VALIDATING_BATCH_SIZE, FILE_IO_BATCH_SIZE
+from .config import SENTENCE_TBL_NAME, VALIDATING_BATCH_SIZE, FILE_IO_BATCH_SIZE, MODEL_OUTPUT_TBL_NAME
 from thematic_analysis_model.view.visualizing import Visualizer
 
 from bertopic import BERTopic
@@ -12,6 +12,8 @@ import pandas as pd
 import numpy as np
 import uuid
 import json
+import math
+import ast
 
 # topic stability metrics
 import itertools
@@ -37,23 +39,16 @@ class Validator:
         self.reassign_document_position()
 
         # generate validation metrics
-        print('validation metrics')
         validation_metric = self.get_validation_metrics()
 
         # get data for reproducibility testing
-        print('reproducibility data')
         doc_ids, doc_topics, valid_topics, topic_vectors, topic_words = self.get_stability_data()
 
         # generate visualizations/figures
-        print('visualizations')
         topic_map, doc_map, heatmap, hierarchy_map = self.get_visualizations()
-        print('1')
         topic_map = topic_map.to_json(engine='orjson')
-        print('2')
         doc_map = doc_map.to_json(engine='orjson') if doc_map else None
-        print('3')
         heatmap = heatmap.to_json(engine='orjson')
-        print('4')
         hierarchy_map = hierarchy_map.to_json(engine='orjson')
 
         # save model output
@@ -178,7 +173,7 @@ class Validator:
 
         # get topic words
         topic_words = {str(t): [word for word, _ in self.model.get_topic(t)[:10]] for t in valid_topics}
-        return doc_ids, doc_ids, valid_topics, topic_vectors, json.dumps(topic_words)
+        return doc_ids, doc_topics, valid_topics, topic_vectors, json.dumps(topic_words)
 
     # gets visualizations using functions from Visualizer
     def get_visualizations(self):
@@ -349,112 +344,242 @@ class Validator:
     # model stability metrics
     #   top level function
     #   returns ARI, AMI, 
-    def get_model_stability_metrics(self):
+    @classmethod
+    def get_model_stability_metrics(cls, loader: Loader, batch_name: str):
         # get data
-        record = self.manager.get_model_output(condition='')
+        records = loader.connect(MODEL_OUTPUT_TBL_NAME).search().where(f'trial_config.batch_name = "{batch_name}"').to_pandas().to_dict(orient="records")
+        num_samples = len(records)
 
         # get list of lists of all data
-
-
-        # align doc ids with topic membership
+        all_doc_topics = [r["doc_topics"] for r in records]
+        all_doc_ids = [r["doc_ids"] for r in records]
+        all_valid_topics = [r["valid_topics"] for r in records]
+        all_topic_vectors = [r["topic_vectors"] for r in records]
+        all_topic_words = [r["topic_words"] for r in records]
 
         # get adjusted rand index
+        print('get ari')
+        ari_score = cls.compute_ari_multi(list_of_doc_topics=all_doc_topics, list_of_doc_ids=all_doc_ids)
 
         # get adjusted mutual info
-        ...
+        print('get ami')
+        ami_score = cls.compute_ami_multi(list_of_doc_topics=all_doc_topics, list_of_doc_ids=all_doc_ids)
+
+        # get outlier jaccard score
+        print('get jaccard')
+        outlier_jaccard_score = cls.compute_outlier_jaccard_multi(list_of_doc_topics=all_doc_topics, list_of_doc_ids=all_doc_ids)
+
+        # get hungarian alignment score
+        print('get hungarian')
+        # hungarian_alignment_score = cls.compute_hungarian_alignment_multi(list_of_topic_vectors=all_topic_vectors)
+
+        # get matched topic rbo
+        print('get rbo')
+        # rbo_score = cls.compute_matched_topic_rbo_multi(list_of_words=all_topic_words, list_of_valid_topics=all_valid_topics, list_of_topic_vectors=all_topic_vectors)
+
+        # get topic num stability
+        print('get count stability')
+        topic_num_stability = cls.compute_topic_count_stability_multi(list_of_valid_topics=all_valid_topics)
+
+        stability_data = {
+            'num_samples': num_samples,
+            'Adjusted Rand Index':ari_score,
+            'Adjusted Mutual Information': ami_score,
+            'Jaccard Score': outlier_jaccard_score,
+           #'Hungarian Alignment': hungarian_alignment_score,
+        #   'Matched RBO': rbo_score,
+            'Number of Topics Stability': topic_num_stability
+        }
+        return stability_data
+
+    @classmethod
+    def _to_1d_array(cls, data, dtype=None) -> np.ndarray:
+        """Safely converts input lists/arrays (including LanceDB/Pandas object wrappers) into a flat 1D array."""
+
+        # 1. Handle top-level string representation of lists
+        if isinstance(data, (str, np.str_)):
+            try:
+                data = json.loads(data)
+            except Exception:
+                data = ast.literal_eval(data)
+
+        arr = np.asarray(data)
+        
+        arr = np.asarray(data)
+        # Unpack 0D object scalar wrapper if present (e.g. from Pandas df.to_dict())
+        if arr.ndim == 0:
+            arr = np.asarray(arr.item())
+        arr = arr.ravel()
+        if dtype is not None:
+            arr = arr.astype(dtype)
+        return arr
+
+    @classmethod
+    def _to_2d_float_array(cls, data) -> np.ndarray:
+        """
+        Safely parses stringified 2D topic vectors (e.g. '[[...]]' or '[]')
+        into a proper float32 2D NumPy array.
+        """
+        if isinstance(data, (str, np.str_)):
+            try:
+                data = json.loads(data)
+            except Exception:
+                data = ast.literal_eval(data)
+
+        arr = np.asarray(data)
+
+        # Unpack 0D object wrappers (e.g. from Pandas Series)
+        if arr.ndim == 0:
+            item = arr.item()
+            if isinstance(item, (str, np.str_)):
+                try:
+                    item = json.loads(item)
+                except Exception:
+                    item = ast.literal_eval(item)
+                arr = np.asarray(item)
+            else:
+                arr = np.asarray(item)
+
+        if arr.size == 0 or len(arr) == 0:
+            return np.empty((0, 0), dtype=np.float32)
+
+        return arr.astype(np.float32)
 
     # def get Adjusted Rand Index
     # AI GENERATED
+    @classmethod
     def _align_multi_doc_topics(
-        self,
+        cls,
         list_of_doc_topics: List[List[int]],
         list_of_doc_ids: Optional[List[List[str]]] = None
     ) -> list[np.ndarray]:
         """
-        Aligns document topic lists across N models by inner-joining on primary keys (doc_id).
-        If doc_ids are omitted or identical, converts lists directly to numpy arrays.
+        Ultra-fast document topic alignment across N models.
+        Pre-aligns all models ONCE using vectorized NumPy operations.
         """
+        if list_of_doc_ids is None or len(list_of_doc_ids) == 0:
+            return [np.array(t, dtype=np.int32) for t in list_of_doc_topics]
+
+        # Convert all inputs to robust 1D arrays upfront
+        ids_1d = [cls._to_1d_array(ids) for ids in list_of_doc_ids]
+        topics_1d = [cls._to_1d_array(t, dtype=np.int32) for t in list_of_doc_topics]
+
         n_models = len(list_of_doc_topics)
-        if n_models < 2:
-            raise ValueError("At least 2 model runs are required to compute reproducibility metrics.")
+        ref_ids = list_of_doc_ids[0]
 
-        if list_of_doc_ids is None:
-            return [np.array(t, dtype=int) for t in list_of_doc_topics]
+        # 1. Fast Path: All doc_ids are already identical in order
+        if all(np.array_equal(ids, ref_ids) for ids in ids_1d[1:]):
+            return topics_1d
 
-        # Align across N models using pandas inner join on doc_id
-        series_list = [
-            pd.Series(topics, index=ids, name=f"m_{i}")
-            for i, (topics, ids) in enumerate(zip(list_of_doc_topics, list_of_doc_ids))
-        ]
-        aligned_df = pd.concat(series_list, axis=1, join="inner")
+        # 2. Fast Path: All models contain the same set of UUIDs (NumPy argsort)
+        ref_len = len(ref_ids)
+        same_lengths = all(len(ids) == ref_len for ids in ids_1d[1:])
+        
+        if same_lengths:
+            aligned_topics = []
+            for arr_topics, arr_ids in zip(topics_1d, ids_1d):
+                sort_order = np.argsort(arr_ids)
+                aligned_topics.append(arr_topics[sort_order])
+                
+            return aligned_topics
 
-        if len(aligned_df) == 0:
-            raise ValueError("No common document IDs found across all model runs.")
+        # 3. Fallback: Overlapping/Drifted Subsets (Dict Lookup)
+        common_ids = set(ref_ids)
+        for ids in ids_1d[1:]:
+            common_ids.intersection_update(ids)
 
-        return [aligned_df[col].to_numpy() for col in aligned_df.columns]   
+        canonical_ids = list(common_ids)
+        aligned_topics = []
+
+        for arr_topics, arr_ids in zip(topics_1d, ids_1d):
+            mapping = dict(zip(arr_ids, arr_topics))
+            aligned_topics.append(
+                np.array([mapping[uid] for uid in canonical_ids], dtype=np.int32)
+            )
+
+        return aligned_topics
 
     # AI GENERATED
-    def _format_metric_result(self, matrix: np.ndarray) -> Dict[str, Any]:
+    @classmethod
+    def _format_metric_result(cls, matrix: np.ndarray) -> Dict[str, Any]:
         """Extracts summary statistics and upper triangle pair values from an N x N matrix."""
         n_models = matrix.shape[0]
         triu_indices = np.triu_indices(n_models, k=1)
         pair_values = matrix[triu_indices]
 
+        mean = float(np.mean(pair_values)) if pair_values.size > 0 else None
+        std = float(np.std(pair_values)) if pair_values.size > 0 else None
+        min_ = float(np.min(pair_values)) if pair_values.size > 0 else None
+        max_ = float(np.max(pair_values)) if pair_values.size > 0 else None
+
         return {
-            "mean": float(np.mean(pair_values)),
-            "std": float(np.std(pair_values)),
-            "min": float(np.min(pair_values)),
-            "max": float(np.max(pair_values)),
+            "mean": mean,
+            "std": std,
+            "min": min_,
+            "max": max_,
             "pairwise_matrix": matrix
         }
 
+    @classmethod
     def compute_ari_multi(
-        self,
+        cls,
         list_of_doc_topics: List[List[int]],
         list_of_doc_ids: Optional[List[List[str]]] = None
     ) -> Dict[str, Any]:
         """
         Computes Adjusted Rand Index (ARI) across N model runs.
         """
-        aligned_topics = self._align_multi_doc_topics(list_of_doc_topics, list_of_doc_ids)
+        aligned_topics = cls._align_multi_doc_topics(list_of_doc_topics, list_of_doc_ids)
         n_models = len(aligned_topics)
         matrix = np.ones((n_models, n_models))
+        pbar = tqdm(total=math.comb(len(range(n_models)), 2), desc='COMPUTE ARI')
 
         for i, j in itertools.combinations(range(n_models), 2):
             score = adjusted_rand_score(aligned_topics[i], aligned_topics[j])
             matrix[i, j] = matrix[j, i] = score
+            pbar.update(1)
 
-        return self._format_metric_result(matrix)
+        pbar.close()
 
+        return cls._format_metric_result(matrix)
+
+    @classmethod
     def compute_ami_multi(
-        self,
+        cls,
         list_of_doc_topics: List[List[int]],
         list_of_doc_ids: Optional[List[List[str]]] = None
     ) -> Dict[str, Any]:
         """
         Computes Adjusted Mutual Information (AMI) across N model runs.
         """
-        aligned_topics = self._align_multi_doc_topics(list_of_doc_topics, list_of_doc_ids)
+        aligned_topics = cls._align_multi_doc_topics(list_of_doc_topics, list_of_doc_ids)
         n_models = len(aligned_topics)
         matrix = np.ones((n_models, n_models))
+        pbar = tqdm(total=math.comb(len(range(n_models)), 2), desc='COMPUTE AMI')
 
         for i, j in itertools.combinations(range(n_models), 2):
             score = adjusted_mutual_info_score(aligned_topics[i], aligned_topics[j])
             matrix[i, j] = matrix[j, i] = score
+            pbar.update(1)
 
-        return self._format_metric_result(matrix)
+        pbar.close()
 
+        return cls._format_metric_result(matrix)
+
+    @classmethod
     def compute_outlier_jaccard_multi(
-        self,
+        cls,
         list_of_doc_topics: List[List[int]],
         list_of_doc_ids: Optional[List[List[str]]] = None
     ) -> Dict[str, Any]:
         """
         Computes Outlier (-1 topic) Jaccard Similarity across N model runs.
         """
-        aligned_topics = self._align_multi_doc_topics(list_of_doc_topics, list_of_doc_ids)
+        aligned_topics = cls._align_multi_doc_topics(list_of_doc_topics, list_of_doc_ids)
         n_models = len(aligned_topics)
         matrix = np.ones((n_models, n_models))
+
+        pbar = tqdm(total=math.comb(len(range(n_models)), 2), desc='COMPUTE JACCARD')
 
         for i, j in itertools.combinations(range(n_models), 2):
             outliers_i = set(np.where(aligned_topics[i] == -1)[0])
@@ -463,11 +588,15 @@ class Validator:
             union = len(outliers_i | outliers_j)
             score = 1.0 if union == 0 else len(outliers_i & outliers_j) / union
             matrix[i, j] = matrix[j, i] = score
+            pbar.update(1)
 
-        return self._format_metric_result(matrix)
+        pbar.close()
 
+        return cls._format_metric_result(matrix)
+
+    @classmethod
     def compute_hungarian_alignment_multi(
-        self,
+        cls,
         list_of_topic_vectors: List[List[List[float]]]
     ) -> Dict[str, Any]:
         """
@@ -479,9 +608,14 @@ class Validator:
 
         matrix = np.ones((n_models, n_models))
 
+        # Parse all vector matrices safely upfront
+        parsed_vectors = [cls._to_2d_float_array(vecs) for vecs in list_of_topic_vectors]
+
+        pbar = tqdm(total=math.comb(len(range(n_models)), 2), desc='COMPUTE HUNGARIAN')
+        
         for i, j in itertools.combinations(range(n_models), 2):
-            vecs_i = np.array(list_of_topic_vectors[i])
-            vecs_j = np.array(list_of_topic_vectors[j])
+            vecs_i = parsed_vectors[i]
+            vecs_j = parsed_vectors[j]
 
             if len(vecs_i) == 0 or len(vecs_j) == 0:
                 matrix[i, j] = matrix[j, i] = 0.0
@@ -491,10 +625,14 @@ class Validator:
             row_ind, col_ind = linear_sum_assignment(-sim_matrix)
             score = np.mean(sim_matrix[row_ind, col_ind])
             matrix[i, j] = matrix[j, i] = float(score)
+            pbar.update(1)
 
-        return self._format_metric_result(matrix)
+        pbar.close()
 
-    def compute_rbo(self, list_a: List[str], list_b: List[str], p: float = 0.9) -> float:
+        return cls._format_metric_result(matrix)
+
+    @classmethod
+    def compute_rbo(cls, list_a: List[str], list_b: List[str], p: float = 0.9) -> float:
         """Helper for single pair Rank-Biased Overlap."""
         if not list_a or not list_b:
             return 0.0
@@ -502,17 +640,18 @@ class Validator:
         k = min(len(list_a), len(list_b))
         set_a, set_b = set(), set()
         rbo_score = 0.0
-
         for d in range(1, k + 1):
             set_a.add(list_a[d - 1])
             set_b.add(list_b[d - 1])
             agreement = len(set_a & set_b) / d
             rbo_score += (p ** (d - 1)) * agreement
 
+
         return (1 - p) * rbo_score
     
+    @classmethod
     def compute_matched_topic_rbo_multi(
-        self,
+        cls,
         list_of_words: List[Dict[str, List[str]]],
         list_of_valid_topics: List[List[int]],
         list_of_topic_vectors: List[List[List[float]]],
@@ -526,6 +665,8 @@ class Validator:
             raise ValueError("At least 2 model runs are required.")
 
         matrix = np.ones((n_models, n_models))
+
+        pbar = tqdm(total=math.comb(len(range(n_models)), 2), desc='COMPUTE RBO')
 
         for i, j in itertools.combinations(range(n_models), 2):
             vecs_i = np.array(list_of_topic_vectors[i])
@@ -547,13 +688,18 @@ class Validator:
                 words_i = list_of_words[i].get(t_id_i, [])
                 words_j = list_of_words[j].get(t_id_j, [])
 
-                rbo_scores.append(self.compute_rbo(words_i, words_j, p=p))
+                rbo_scores.append(cls.compute_rbo(words_i, words_j, p=p))
 
             matrix[i, j] = matrix[j, i] = float(np.mean(rbo_scores))
+            pbar.update(1)
 
-        return self._format_metric_result(matrix)
+        pbar.close()
 
+        return cls._format_metric_result(matrix)
+
+    @classmethod
     def compute_topic_count_stability_multi(
+        cls,
         list_of_valid_topics: List[List[int]]
     ) -> Dict[str, float]:
         """

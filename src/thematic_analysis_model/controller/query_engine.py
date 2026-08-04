@@ -6,7 +6,6 @@ import re
 
 # class for handling user queries into database
 
-
 class QueryEngine:
     search_mode_dict = {
         str(field_name) + '=': f"trial_config.{str(field_name)}" for field_name in TrialConfig.model_fields

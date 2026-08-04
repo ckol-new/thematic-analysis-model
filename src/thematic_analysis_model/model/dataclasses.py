@@ -52,7 +52,7 @@ class TrialConfig(BaseModel):
     model_save_path: str | None = None
     umap_parametric: bool = False
     umap_n_neighbours: int = 15
-    umap_n_components: int = 2
+    umap_n_components: int = 5
     umap_metric: str = 'euclidean'
     umap_min_dist: float = 0.1
     umap_random_state: int = 42
