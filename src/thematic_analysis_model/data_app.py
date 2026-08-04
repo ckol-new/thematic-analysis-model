@@ -62,7 +62,7 @@ def side_bar_fragment():
             with r_col:
                 button = st.form_submit_button('search')
         if button:
-            search_results = query_engine.query_db(condition=query_engine.handle_input(text=search_input))
+            search_results = query_engine.handle_input(text=search_input)
             st.session_state.search_results = search_results
 
         # render search results

@@ -95,4 +95,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    trial_queue_test()

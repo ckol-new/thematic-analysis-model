@@ -275,11 +275,13 @@ class Manager:
             .execute(data)
         )
 
-    def get_model_output(self, condition: str | None) -> list[ModelOutput]:
+    def get_model_output(self, condition: str | None, semantic_search: bool = False) -> list[ModelOutput]:
         tbl = self.check_tbl_name(tbl_name=MODEL_OUTPUT_TBL_NAME)
 
         if not condition:
             result = tbl.search().to_pydantic(model=ModelOutput)
+        elif semantic_search:
+            result = tbl.search(condition).to_pydantic(model=ModelOutput)
         else:
             result = tbl.search().where(condition).to_pydantic(model=ModelOutput)
 

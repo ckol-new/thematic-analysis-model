@@ -77,8 +77,18 @@ class ValidationMetric(BaseModel):
     prob_distributions: list[dict]
 
 class ModelOutput(LanceModel):
+    # metadata
     trial_config: TrialConfig
     validation_metrics: str # json str
+
+    # data for reproducibility tests.
+    doc_ids: str # list of uuids (list[str]) json serialized
+    doc_topics: str # list of topics, for each document (same order as in doc_ids) (list[int]) json serialized
+    valid_topics: str # list of valid topics (list[int]) json serialized
+    topic_vectors: str # topic vectors (list[list[floats]]) json serialized
+    topic_words: str # topic words (dict(str, list[str])) json serialized
+
+    # visualizations
     topic_map: str | None# json str of plotly chart
     document_map: str | None
     heatmap: str | None
