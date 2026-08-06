@@ -4,6 +4,7 @@ from pydantic import BaseModel, TypeAdapter
 from .config import EMBEDDING_DIMENSIONS, EMBEDDING_MODEL_NAME
 from datetime import datetime
 
+from typing import Dict
 from pathlib import Path
 import uuid
 
@@ -84,6 +85,7 @@ class ModelOutput(LanceModel):
     # data for reproducibility tests.
     doc_ids: str # list of uuids (list[str]) json serialized
     doc_topics: str # list of topics, for each document (same order as in doc_ids) (list[int]) json serialized
+    doc_to_topics: str # json serialized dictionary of doc id : topic assignment
     valid_topics: str # list of valid topics (list[int]) json serialized
     topic_vectors: str # topic vectors (list[list[floats]]) json serialized
     topic_words: str # topic words (dict(str, list[str])) json serialized
@@ -96,3 +98,4 @@ class ModelOutput(LanceModel):
     
 # Adapters: enable pydantic dataclass adaptation to json, str, dict, etc.
 validation_metric_adapter = TypeAdapter(ValidationMetric)
+model_output_adapter = TypeAdapter(ModelOutput)

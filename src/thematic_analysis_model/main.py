@@ -12,19 +12,20 @@ tf.config.set_visible_devices([], 'GPU')
 from thematic_analysis_model.model.config import *
 from thematic_analysis_model.model.trial import TrialQueue
 from thematic_analysis_model.model.scrape_config import alzconnected_ALL, dementiasupportforum_ALL
-from thematic_analysis_model.model.dataclasses import TrialConfig, ModelOutput, Sentence
+from thematic_analysis_model.model.dataclasses import TrialConfig, ModelOutput, Sentence, model_output_adapter
 from thematic_analysis_model.model.data_management import Loader, Manager
 from thematic_analysis_model.model.scraping import alzconnectedScrapingPipeline, dementiasupportforumScrapingPipeline,  ScrapingPipeline, Processor, ScrapeQueue
 from thematic_analysis_model.model.embedding import Embedder
 from thematic_analysis_model.model.modelling import Modeller
 from thematic_analysis_model.view.visualizing import Visualizer
-from thematic_analysis_model.model.validating import Validator
+from thematic_analysis_model.model.validating import Validator, StabilityEvaluator
 from thematic_analysis_model.controller.query_engine import QueryEngine
 
 import pprint
 import asyncio
 import pandas as pd
 import plotly.express as px
+import json
 
 
 def reset_model_output():
@@ -60,10 +61,10 @@ def trial_queue_test():
 
     trial_configs = TrialQueue.generate_trial_configs(
         trial_name='test_batch_hdbscan_min_samples_5_',
-        batch_name='test_batch_hdbscan_min_samples_5_hdbscan_min_cluster_size_30,',
+        batch_name='test_batch_hdbscan_min_samples_5_hdbscan_min_cluster_size_30',
         model_save_path=(Path('/Users/christopher.kollar/research/HealthyCityLab/DementiaForumAnalysis/thematic-analysis-model/models') / 'testing').resolve(),
         umap_parametric=True,
-        hdbscan_min_cluster_size=[30, 30, 30, 30, 30, 30, 30, 30, 30, 30],
+        hdbscan_min_cluster_size=[30, 30, 30],
         hdbscan_min_samples=5,
     )
 
@@ -76,14 +77,33 @@ def trial_queue_test():
 
 def test_stability_metrics():
     loader = Loader()
-    stability_data = Validator.get_model_stability_metrics(loader, batch_name='test_batch_hdbscan_min_samples_5_hdbscan_min_cluster_size_30,')
-    pprint.pprint(stability_data)
+    manager = Manager(loader)
+    stability_validator = StabilityEvaluator(
+        loader=loader, manager=manager
+    )
+
+    d = stability_validator.evaluate('test_batch_hdbscan_min_samples_5_hdbscan_min_cluster_size_30')
+    pprint.pprint(d, sort_dicts=False)
     
 def main():
     loader = Loader() # loader is composed into classes that need table access directly. 
-    manager=Manager(loader=loader)
-    manager.clean_lancedb(0)
+    tbl = loader.connect(MODEL_OUTPUT_TBL_NAME)
+    mo =  tbl.search().limit(1).to_pydantic(model=ModelOutput)[0]
+    pprint.pprint(json.loads(mo.topic_vectors))
 
+    '''
+    json_str = model_output_adapter.dump_json(mo, indent=4).decode('utf-8')
+
+    print('a')
+    p = Path.cwd() / 'test_mo' / 'test.json'
+    with p.open('w', encoding='utf-8') as f:
+        f.write(json_str)
+
+    print('b')
+    '''
+
+    
+    
 
 
 if __name__ == "__main__":
