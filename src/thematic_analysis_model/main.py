@@ -61,10 +61,10 @@ def trial_queue_test():
 
     trial_configs = TrialQueue.generate_trial_configs(
         trial_name='test_batch_hdbscan_min_samples_5_',
-        batch_name='test_batch_hdbscan_min_samples_5_hdbscan_min_cluster_size_30',
+        batch_name='test_stability_3_DIFF',
         model_save_path=(Path('/Users/christopher.kollar/research/HealthyCityLab/DementiaForumAnalysis/thematic-analysis-model/models') / 'testing').resolve(),
         umap_parametric=True,
-        hdbscan_min_cluster_size=[30, 30, 30],
+        hdbscan_min_cluster_size=[30, 30, 30, 30],
         hdbscan_min_samples=5,
     )
 
@@ -82,7 +82,7 @@ def test_stability_metrics():
         loader=loader, manager=manager
     )
 
-    d = stability_validator.evaluate('test_batch_hdbscan_min_samples_5_hdbscan_min_cluster_size_30')
+    d = stability_validator.evaluate('test_stability_3_DIFF')
     pprint.pprint(d, sort_dicts=False)
     
 def main():
@@ -107,4 +107,4 @@ def main():
 
 
 if __name__ == "__main__":
-    test_stability_metrics()
+    main()

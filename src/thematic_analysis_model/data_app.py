@@ -4,9 +4,10 @@ import random
 
 from thematic_analysis_model.model.dataclasses import ModelOutput
 from thematic_analysis_model.model.data_management import Manager, Loader
+from thematic_analysis_model.model.validating import StabilityEvaluator
 from thematic_analysis_model.controller.query_engine import QueryEngine
 from thematic_analysis_model.view.data_for_widgets import ModelOutputSearchBarViewData
-from thematic_analysis_model.view.widgets import model_search_view, model_main_view
+from thematic_analysis_model.view.widgets import model_search_view, model_main_view, batch_main_view
 
 import kaleido
 kaleido.get_chrome_sync()
@@ -16,8 +17,8 @@ if 'search_results' not in st.session_state:
     st.session_state.search_results = []
 if 'current_model' not in st.session_state:
     st.session_state.current_model = None
-if 'current_batch' not in st.session_state:
-    st.session_state.current_batch = []
+if 'current_batch_name' not in st.session_state:
+    st.session_state.current_batch_name = None
 if 'active_mode' not in st.session_state:
     st.session_state.active_mode = None
 
@@ -34,13 +35,13 @@ def get_utility_objs():
     loader = Loader()
     manager=Manager(loader=loader)
     query_engine = QueryEngine(manager=manager)
-    return loader, manager, query_engine
+    stability_evaluator = StabilityEvaluator(loader=loader, manager=manager)
+    return loader, manager, query_engine, stability_evaluator
 
-loader, manager, query_engine = get_utility_objs()
+loader, manager, query_engine, stability_evaluator = get_utility_objs()
 
 # basic UI
 # title + formatting
-st.title('Model View')
 
 # sidebar -> list db entries + search
 #   requires sidebar context
@@ -86,4 +87,7 @@ side_bar_fragment()
 if st.session_state.active_mode == 'model_view':
     with model_main_view():
         pass
-    
+elif st.session_state.active_mode == 'batch_view':
+    # get batch 
+    with batch_main_view(manager=manager, stability_evaluator=stability_evaluator):
+        pass
