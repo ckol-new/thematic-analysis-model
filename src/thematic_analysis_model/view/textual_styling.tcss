@@ -1,0 +1,24 @@
+VerticalGroup {
+    height: 100%;
+    layout: grid;
+    grid-size: 1;
+    grid-rows: auto;
+}
+VerticalScroll {
+    height: 100%;
+    layout: grid;
+    grid-size: 1;
+    grid-rows: auto;
+}
+Collapsible {
+    height: auto;
+    margin: 0 1;
+}
+Collapsible Static {
+    height: auto;
+    padding: 1;
+}
+
+EntryView.hidden {
+    display: none;
+}

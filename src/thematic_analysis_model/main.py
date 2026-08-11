@@ -60,11 +60,11 @@ def trial_queue_test():
     manager = Manager(loader=loader)
 
     trial_configs = TrialQueue.generate_trial_configs(
-        trial_name='test_batch_hdbscan_min_samples_5_',
-        batch_name='test_stability_3_DIFF',
+        trial_name='test_batch_view',
+        batch_name='test_batch_view_increment_min_cluster_size',
         model_save_path=(Path('/Users/christopher.kollar/research/HealthyCityLab/DementiaForumAnalysis/thematic-analysis-model/models') / 'testing').resolve(),
         umap_parametric=True,
-        hdbscan_min_cluster_size=[30, 30, 30, 30],
+        hdbscan_min_cluster_size=[10, 10, 10, 20, 20, 20, 30, 30, 30, 40, 40, 40],
         hdbscan_min_samples=5,
     )
 
@@ -107,4 +107,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    trial_queue_test()

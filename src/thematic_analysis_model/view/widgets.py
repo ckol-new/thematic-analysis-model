@@ -4,10 +4,14 @@ from thematic_analysis_model.model.validating import StabilityEvaluator
 from .data_for_widgets import ModelOutputSearchBarViewData
 
 import streamlit as st
+import json
 from plotly.io import from_json
+import plotly.express as plx
 import pandas as pd
 import kaleido
 import contextlib
+from dataclasses import fields
+from collections import defaultdict
 
 
 @contextlib.contextmanager
@@ -125,15 +129,40 @@ def batch_main_view(manager: Manager, stability_evaluator: StabilityEvaluator):
     #   num batches
     #   individual trials + configs
 
+
     # get stability metrics
     stability_metric_data = stability_evaluator.evaluate(
         batch_name=st.session_state.current_batch_name
     )
     render_nested_dict(d=stability_metric_data)
 
+    # if incrementing batch -> specific view
+    # elif non-incrementing batch -> diff view
     # view validation metric statistics
+    batch_increment_button = st.button(label='Batch Increments', key='ajhdjsahdajsndf')
+    if batch_increment_button:
+        incrementing_param = find_incrementing_parameter(batch=batch)
+
+        st.write(len(incrementing_param))
+
+        charts = []
+        for param in incrementing_param:
+            df = load_line_chart_data(batch=batch, param=param)
+
+            for col in df.columns:
+                if col in [param, 'topics_pairwise_distance', 'redundant_pairs', 'prob_distributions']:
+                    continue
+
+                chart = plx.line(data_frame=df[[param, col]], x=param, y=col, title=f'{col} over {param}')
+                charts.append(chart)
+
+
+        for chart in charts:
+            st.plotly_chart(chart)
+    
     yield
 
+# render nested dicts cleanly
 def render_nested_dict(d, level=0):
     for key, val in d.items():
         clean_key = key.replace('_', ' ').title()
@@ -143,3 +172,59 @@ def render_nested_dict(d, level=0):
         else:
             formatted_val = f"{val:.4f}" if isinstance(val, float) else val
             st.text(f"{clean_key}: {formatted_val}")
+            
+
+# identify parameter that increments
+def find_incrementing_parameter(batch: list[ModelOutput]):
+    trial_configs: list[TrialConfig] = [
+        model_output.trial_config for model_output in batch
+    ]
+
+    attribute_dict = defaultdict(list)
+    for config in trial_configs:
+        for attr_name, attr_info in type(config).model_fields.items():
+            # filter unwanted attributes
+            if attr_name in ['trial_name', 'trial_num', 'id_', 'model_save_path']: continue
+            if attr_info.annotation is str: continue
+
+            # append to attribute dict
+            attribute_dict[attr_name].append(getattr(config, attr_name))
+    attribute_dict = dict(attribute_dict)
+
+    # check for incrementing values
+    incrementing_fields = []
+    for attr in attribute_dict.keys():
+        if len(set(attribute_dict[attr])) > 1:
+            incrementing_fields.append(attr)
+    
+    return incrementing_fields
+
+# load data needed for line chart -> based on parameter that is incremented
+def load_line_chart_data(batch: list[ModelOutput], param: str) -> pd.DataFrame:
+    configs = [model_output.trial_config for model_output in batch]
+    validation_metrics = [validation_metric_adapter.validate_json(model_output.validation_metrics) for model_output in batch]
+
+    # get values of parameter that is incrementing in order of batch
+    relevant_param_values = []
+    for config in configs:
+        for attr_name, attr_info in type(config).model_fields.items():
+            if attr_name == param:
+                relevant_param_values.append(getattr(config, attr_name))
+
+    # get values of other data that is incrementing in order of batch
+    data_dict = defaultdict(list)
+    for metric in validation_metrics:
+        for attr_name, attr_info in type(metric).model_fields.items():
+            data_dict[attr_name].append(getattr(metric, attr_name))
+    data_dict[param] = relevant_param_values
+
+    df = pd.DataFrame(data_dict).sort_values(by=param)
+
+    # Group repeating parameter values and compute the mean of metrics
+    df = df.groupby(param, as_index=False).mean(numeric_only=True)
+
+    return df
+
+    
+
+    ...
