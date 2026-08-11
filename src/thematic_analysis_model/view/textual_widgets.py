@@ -17,6 +17,7 @@ class EntryField(HorizontalGroup):
         yield Label(self.entry_name, id=self.name)
         yield Input(id=self.entry_name, type=self.type_)
 
+
 # class for Collapsible Entry Views
 class CollapsibleEntryView(Widget):
     def __init__(self, name, entry_field_names: list[str], entry_field_types: list[str], **kwargs) -> None:
